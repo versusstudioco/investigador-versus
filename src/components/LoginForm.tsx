@@ -33,15 +33,10 @@ export default function LoginForm() {
   return (
     <div className="login-wrap">
       <div className="login-card">
-        <div className="brand">
-          <Image className="brand-logo" src="/versus-negro.png" alt="Versus" width={44} height={44} />
-          <div>
-            <div className="brand-name">Versus Legal</div>
-            <div className="brand-sub">Propiedad Industrial</div>
-          </div>
+        <div className="login-brand">
+          <Image className="login-logo" src="/versus-negro.png" alt="Versus" width={72} height={72} priority />
+          <div className="brand-name-lg">VERSUS LEGAL</div>
         </div>
-        <div className="login-title">Rastreador de Marcas</div>
-        <div className="login-desc">Consulta, análisis de viabilidad y registro de marcas ante la SIC · Colombia.</div>
 
         <form onSubmit={onSubmit}>
           <div className="field">
@@ -57,12 +52,6 @@ export default function LoginForm() {
             {loading ? "Ingresando…" : "Ingresar"}
           </button>
         </form>
-
-        <div className="login-hint">
-          <b>Acceso administrador:</b> usuario <b>ADMIN</b> · contraseña <b>123456</b>
-          <br />
-          Desde el panel de Admin puedes crear abogados y asignar permisos.
-        </div>
       </div>
     </div>
   );

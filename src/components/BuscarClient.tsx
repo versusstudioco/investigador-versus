@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { NICE_CLASSES, PROCESO_INFO } from "@/lib/nice";
+import { useMemo, useState } from "react";
+import { NICE_CLASSES, PROCESO_INFO, claseTitulo, sugerirClasesDesc } from "@/lib/nice";
 import type { CasoRow } from "@/lib/models";
 import ResultadoViabilidad from "./ResultadoViabilidad";
 
@@ -9,25 +9,31 @@ export default function BuscarClient({ puedeDescargar }: { puedeDescargar: boole
   const [nombre, setNombre] = useState("");
   const [tipo, setTipo] = useState("Nominativa");
   const [titular, setTitular] = useState("");
-  const [clases, setClases] = useState<number[]>([]);
   const [descripcion, setDescripcion] = useState("");
+  const [clases, setClases] = useState<number[]>([]);
   const [mipyme, setMipyme] = useState(false);
+  const [manual, setManual] = useState("");
   const [caso, setCaso] = useState<CasoRow | null>(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  function toggleClasesFromSelect(e: React.ChangeEvent<HTMLSelectElement>) {
-    const vals = Array.from(e.target.selectedOptions).map((o) => Number(o.value));
-    setClases(vals);
+  // Sugerencias en vivo según la descripción
+  const sugerencias = useMemo(() => sugerirClasesDesc(descripcion), [descripcion]);
+
+  function toggleClase(c: number) {
+    setClases((prev) => (prev.includes(c) ? prev.filter((x) => x !== c) : [...prev, c]));
+  }
+  function agregarManual() {
+    const c = Number(manual);
+    if (c && !clases.includes(c)) setClases((prev) => [...prev, c]);
+    setManual("");
   }
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
-    if (!nombre.trim() || clases.length === 0) {
-      setError("Ingresa la marca y al menos una clase.");
-      return;
-    }
+    if (!nombre.trim()) return setError("Escribe el nombre de la marca.");
+    if (clases.length === 0) return setError("Selecciona al menos una clase (usa las sugerencias o agrégala manualmente).");
     setLoading(true);
     const res = await fetch("/api/casos", {
       method: "POST",
@@ -49,9 +55,10 @@ export default function BuscarClient({ puedeDescargar }: { puedeDescargar: boole
     <>
       <div className="card">
         <form onSubmit={onSubmit}>
+          {/* Paso 1: identidad de la marca */}
           <div className="grid-2">
             <div className="field">
-              <label>Marca / signo a consultar *</label>
+              <label>1. Marca / signo a consultar *</label>
               <input value={nombre} onChange={(e) => setNombre(e.target.value)} placeholder="Ej: LAS MANOS" required />
             </div>
             <div className="field">
@@ -62,31 +69,81 @@ export default function BuscarClient({ puedeDescargar }: { puedeDescargar: boole
               </select>
             </div>
           </div>
-          <div className="grid-2">
-            <div className="field">
-              <label>Titular / solicitante</label>
-              <input value={titular} onChange={(e) => setTitular(e.target.value)} placeholder="Nombre del cliente o empresa" />
-            </div>
-            <div className="field">
-              <label>Clase(s) de Niza * (Ctrl/Cmd para varias)</label>
-              <select multiple size={5} onChange={toggleClasesFromSelect} required>
+          <div className="field">
+            <label>Titular / solicitante</label>
+            <input value={titular} onChange={(e) => setTitular(e.target.value)} placeholder="Nombre del cliente o empresa" />
+          </div>
+
+          {/* Paso 2: describir la marca → sugerencias */}
+          <div className="field">
+            <label>2. ¿Qué vende o hace la marca? (describe para sugerirte las clases) *</label>
+            <textarea rows={3} value={descripcion} onChange={(e) => setDescripcion(e.target.value)}
+              placeholder="Ej: fabricamos y vendemos ropa y calzado para dama, también tenemos tienda online y hacemos publicidad de moda" />
+          </div>
+
+          {/* Paso 3: clases sugeridas seleccionables */}
+          <div className="field">
+            <label>3. Selecciona las clases de Niza que apliquen *</label>
+            {descripcion.trim() === "" ? (
+              <p className="muted">Escribe la descripción arriba y aquí aparecerán las clases sugeridas para seleccionar.</p>
+            ) : sugerencias.length === 0 ? (
+              <p className="muted">No detectamos clases automáticamente. Agrégalas manualmente abajo. 👇</p>
+            ) : (
+              <div className="sugerencias">
+                {sugerencias.map((s) => {
+                  const on = clases.includes(s.c);
+                  return (
+                    <button type="button" key={s.c} onClick={() => toggleClase(s.c)}
+                      className={`sug-item ${on ? "on" : ""}`}>
+                      <span className="sug-check">{on ? "✓" : "+"}</span>
+                      <span>
+                        <b>Clase {s.c}</b> — {s.titulo}
+                        <span className="sug-motivo">coincide con: {s.motivo}</span>
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* Agregar clase manual (opcional) */}
+          <div className="field">
+            <label>¿Falta alguna? Agrégala manualmente (opcional)</label>
+            <div className="row" style={{ alignItems: "center" }}>
+              <select value={manual} onChange={(e) => setManual(e.target.value)} style={{ maxWidth: 520 }}>
+                <option value="">Elegir una clase…</option>
                 {NICE_CLASSES.map((n) => (
                   <option key={n.c} value={n.c}>Clase {n.c} ({n.tipo}) — {n.t}</option>
                 ))}
               </select>
+              <button type="button" className="btn btn-outline btn-sm" onClick={agregarManual} disabled={!manual}>Agregar</button>
             </div>
           </div>
-          <div className="field">
-            <label>Descripción de productos / servicios</label>
-            <textarea rows={2} value={descripcion} onChange={(e) => setDescripcion(e.target.value)} placeholder="Ej: prendas de vestir y calzado para dama" />
-            <p className="muted" style={{ marginTop: 4 }}>Con la descripción, el sistema sugiere las clases de Niza que corresponden.</p>
-          </div>
+
+          {/* Clases seleccionadas */}
+          {clases.length > 0 && (
+            <div className="field">
+              <label>Clases seleccionadas ({clases.length})</label>
+              <div className="chips">
+                {clases.map((c) => (
+                  <span className="chip" key={c}>
+                    <b>Clase {c}</b> — {claseTitulo(c).slice(0, 30)}
+                    <button type="button" onClick={() => toggleClase(c)} className="chip-x" aria-label="Quitar">✕</button>
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* MiPyme */}
           <div className="field">
             <label style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }}>
               <input type="checkbox" className="switch" checked={mipyme} onChange={(e) => setMipyme(e.target.checked)} />
               El titular es <b>MiPyme</b> (aplica tarifa reducida de la SIC)
             </label>
           </div>
+
           {error && <div className="login-error">{error}</div>}
           <div className="row">
             <button className="btn btn-primary" disabled={loading}>{loading ? "Analizando…" : "Analizar viabilidad"}</button>

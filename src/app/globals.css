@@ -69,6 +69,9 @@ input.switch:checked::after{ transform:translateX(18px); }
 }
 .brand{ display:flex; align-items:center; gap:12px; margin-bottom:6px; }
 .brand-logo{ width:44px; height:44px; object-fit:contain; flex:0 0 auto; }
+.login-brand{ display:flex; flex-direction:column; align-items:center; text-align:center; gap:12px; margin-bottom:28px; }
+.login-logo{ width:72px; height:72px; object-fit:contain; }
+.brand-name-lg{ font-weight:800; font-size:24px; letter-spacing:1px; }
 .brand-name{ font-weight:800; font-size:20px; letter-spacing:-.5px; }
 .brand-sub{ color:var(--gris); font-size:12.5px; font-weight:600; letter-spacing:.5px; text-transform:uppercase; }
 .login-title{ font-size:23px; font-weight:800; margin:22px 0 4px; letter-spacing:-.5px; }
@@ -163,6 +166,24 @@ tr:hover td{ background:rgba(232,247,255,.35); }
 
 .chips{ display:flex; gap:8px; flex-wrap:wrap; }
 .chip{ background:rgba(232,247,255,.7); -webkit-backdrop-filter:blur(6px); backdrop-filter:blur(6px); padding:6px 12px; border-radius:20px; font-size:13px; font-weight:600; display:inline-flex; gap:6px; align-items:center; border:1px solid var(--glass-border); }
+.chip-x{ border:none; background:transparent; color:var(--rojo); font-weight:800; cursor:pointer; padding:0 0 0 2px; font-size:12px; }
+
+/* Lista de clases sugeridas (seleccionables) */
+.sugerencias{ display:flex; flex-direction:column; gap:8px; }
+.sug-item{
+  display:flex; align-items:flex-start; gap:12px; text-align:left; width:100%;
+  padding:12px 14px; border-radius:14px; cursor:pointer; font-size:14px; color:var(--oscuro);
+  background:rgba(255,255,255,.55); border:1px solid var(--glass-border);
+  -webkit-backdrop-filter:blur(6px); backdrop-filter:blur(6px); transition:.15s;
+}
+.sug-item:hover{ border-color:rgba(249,0,0,.35); }
+.sug-item.on{ background:rgba(249,0,0,.07); border-color:var(--rojo); box-shadow:0 4px 14px rgba(249,0,0,.14); }
+.sug-check{
+  flex:0 0 auto; width:24px; height:24px; border-radius:50%; display:grid; place-items:center;
+  font-weight:800; font-size:14px; background:rgba(29,29,29,.08); color:var(--gris);
+}
+.sug-item.on .sug-check{ background:var(--rojo); color:#fff; }
+.sug-motivo{ display:block; font-size:12px; color:var(--gris); font-weight:500; margin-top:2px; }
 .muted{ color:var(--gris); font-size:13px; }
 .note{ background:rgba(232,247,255,.6); border-radius:12px; padding:12px 14px; font-size:13px; margin-top:14px; border:1px solid rgba(255,255,255,.6); }
 .note-warn{ background:rgba(255,120,120,.10); border:1px solid rgba(249,0,0,.22); color:#8a1a1a; }

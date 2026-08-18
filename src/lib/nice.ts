@@ -145,7 +145,7 @@ export const KEYWORDS_CLASE: { c: number; kw: string[] }[] = [
   { c: 25, kw: ["ropa", "vestir", "vestido", "camisa", "camiseta", "pantalon", "calzado", "zapato", "zapatos", "tenis", "moda", "prenda", "prendas", "chaqueta", "sombreria", "gorra", "medias", "ropa interior", "confeccion", "confecciones"] },
   { c: 28, kw: ["juguete", "juguetes", "juego", "deporte", "deportivo", "gimnasia", "balon"] },
   { c: 29, kw: ["carne", "pescado", "lacteo", "lacteos", "queso", "leche", "aceite comestible", "conserva", "embutido", "huevo"] },
-  { c: 30, kw: ["cafe", "te", "harina", "pan", "panaderia", "pasteleria", "postre", "chocolate", "salsa", "especia", "arroz", "galleta", "dulce"] },
+  { c: 30, kw: ["cafe", "harina", "pan", "panaderia", "pasteleria", "postre", "chocolate", "salsa", "especia", "arroz", "galleta", "dulce", "te aromatico", "infusion"] },
   { c: 31, kw: ["agricola", "planta", "plantas", "semilla", "fruta", "verdura", "animal vivo", "mascota", "alimento para animales", "flores"] },
   { c: 32, kw: ["cerveza", "agua", "jugo", "refresco", "gaseosa", "bebida sin alcohol", "energizante"] },
   { c: 33, kw: ["licor", "aguardiente", "ron", "vino", "whisky", "vodka", "bebida alcoholica", "tequila", "cerveza artesanal"] },
@@ -162,6 +162,25 @@ export const KEYWORDS_CLASE: { c: number; kw: string[] }[] = [
   { c: 44, kw: ["medico", "clinica", "salud servicio", "veterinario", "veterinaria", "estetica", "spa", "peluqueria", "barberia", "odontologia", "belleza servicio", "agricultura servicio"] },
   { c: 45, kw: ["juridico", "juridicos", "abogado", "legal", "seguridad", "vigilancia", "notaria", "servicios personales"] },
 ];
+
+/* Sugerencia de clases a partir de la descripción (uso en cliente y servidor) */
+/* Coincidencia por palabra/frase completa (evita falsos positivos como "te" dentro de "tenemos") */
+export function matchKeyword(textoNorm: string, keyword: string): boolean {
+  const k = keyword.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return new RegExp(`(^|[^a-z0-9])${k}([^a-z0-9]|$)`).test(textoNorm);
+}
+
+export function sugerirClasesDesc(descripcion: string): { c: number; titulo: string; motivo: string }[] {
+  const d = descripcion.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+  if (!d.trim()) return [];
+  const out: { c: number; titulo: string; motivo: string; hits: number }[] = [];
+  for (const { c, kw } of KEYWORDS_CLASE) {
+    const matched = kw.filter((k) => matchKeyword(d, k));
+    if (matched.length) out.push({ c, titulo: claseTitulo(c), motivo: matched.slice(0, 4).join(", "), hits: matched.length });
+  }
+  out.sort((a, b) => b.hits - a.hits);
+  return out.slice(0, 8).map(({ c, titulo, motivo }) => ({ c, titulo, motivo }));
+}
 
 export const PALABRAS_DEBILES = [
   "premium", "original", "natural", "express", "digital", "global", "colombia", "nacional",

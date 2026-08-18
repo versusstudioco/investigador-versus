@@ -1,4 +1,4 @@
-import { PALABRAS_DEBILES, PRECIOS, KEYWORDS_CLASE, claseTitulo } from "./nice";
+import { PALABRAS_DEBILES, PRECIOS, KEYWORDS_CLASE, claseTitulo, matchKeyword } from "./nice";
 import { EXAMPLE_REGISTRY, type RegistroMarca } from "./registry";
 
 export type Coincidencia = RegistroMarca & { sim: number; mismaClase: boolean };
@@ -31,7 +31,7 @@ export function sugerirClases(descripcion: string, registro: RegistroMarca[], no
   const out: { c: number; hits: string[] }[] = [];
   if (d) {
     for (const { c, kw } of KEYWORDS_CLASE) {
-      const hits = kw.filter((k) => d.includes(norm(k)));
+      const hits = kw.filter((k) => matchKeyword(d, k));
       if (hits.length) out.push({ c, hits });
     }
     out.sort((a, b) => b.hits.length - a.hits.length);
