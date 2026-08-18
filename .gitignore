@@ -1,0 +1,21 @@
+# dependencias
+/node_modules
+
+# next
+/.next
+/out
+next-env.d.ts
+
+# entorno (¡NUNCA subir secretos a GitHub!)
+.env
+.env*.local
+
+# base de datos local
+*.db
+*.db-journal
+dev.db*
+
+# sistema
+.DS_Store
+*.log
+/legacy-static
