@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import type { CasoRow, AntecedenteSIPI } from "@/lib/models";
+import type { CasoRow, AntecedenteSIPI, Requerimiento } from "@/lib/models";
 import { generarPDF } from "@/lib/pdf";
 import { PROCESO_INFO, NICE_CLASSES } from "@/lib/nice";
 
@@ -21,7 +21,44 @@ export default function ResultadoViabilidad({ caso, puedeDescargar, puedeEditar 
   const [ant, setAnt] = useState({ marca: caso.nombre, clase: String(caso.clases[0] || ""), estado: "Registrada", expediente: "", titular: "" });
   const [guardando, setGuardando] = useState(false);
 
-  const casoConAnt = { ...caso, antecedentesSIPI: antecedentes };
+  // Requerimientos / seguimiento del expediente
+  const [requerimientos, setRequerimientos] = useState<Requerimiento[]>(caso.requerimientos || []);
+  const [req, setReq] = useState({ tipo: "Requerimiento de forma", expediente: "", fechaNotificacion: "", fechaLimite: "", descripcion: "", estado: "Pendiente" });
+  const [guardandoReq, setGuardandoReq] = useState(false);
+
+  const casoConAnt = { ...caso, antecedentesSIPI: antecedentes, requerimientos };
+
+  async function guardarRequerimientos(lista: Requerimiento[]) {
+    const res = await fetch(`/api/casos/${caso.id}`, {
+      method: "PATCH", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ requerimientos: lista }),
+    });
+    return res.ok;
+  }
+  async function agregarReq() {
+    if (!req.fechaLimite) return alert("Indica la fecha límite para responder.");
+    const nuevo: Requerimiento = { ...req, registradoPor: caso.autor || "—" };
+    const lista = [...requerimientos, nuevo];
+    setGuardandoReq(true);
+    const ok = await guardarRequerimientos(lista);
+    setGuardandoReq(false);
+    if (ok) { setRequerimientos(lista); setReq({ ...req, expediente: "", fechaNotificacion: "", fechaLimite: "", descripcion: "" }); }
+    else alert("No se pudo guardar el requerimiento.");
+  }
+  async function quitarReq(i: number) {
+    const lista = requerimientos.filter((_, idx) => idx !== i);
+    if (await guardarRequerimientos(lista)) setRequerimientos(lista);
+  }
+  async function cambiarEstadoReq(i: number, estado: string) {
+    const lista = requerimientos.map((r, idx) => (idx === i ? { ...r, estado } : r));
+    if (await guardarRequerimientos(lista)) setRequerimientos(lista);
+  }
+  function diasRestantes(fechaLimite: string): number | null {
+    if (!fechaLimite) return null;
+    const hoy = new Date(); hoy.setHours(0, 0, 0, 0);
+    const lim = new Date(fechaLimite + "T00:00:00");
+    return Math.round((lim.getTime() - hoy.getTime()) / 86400000);
+  }
 
   async function descargar() {
     setGen(true);
@@ -182,6 +219,68 @@ export default function ResultadoViabilidad({ caso, puedeDescargar, puedeEditar 
         )}
         <div className="note note-warn">
           Ninguna fuente ofrece API automática de marcas. <b>OMPI</b> (gratis, incluye Colombia, búsqueda por similitud) y <b>SIPI</b> (oficial de la SIC) se consultan a mano; el abogado <b>registra aquí</b> lo hallado para dejarlo en el informe con validez.
+        </div>
+      </div>
+
+      <div className="card">
+        <h2>Requerimientos y seguimiento del expediente</h2>
+        <div className="card-desc">Registra los requerimientos que la SIC publica en el expediente digital de SIPI (ej. <b>requerimiento de forma</b>) y controla los plazos para responder.</div>
+
+        {requerimientos.length > 0 ? (
+          <div style={{ overflowX: "auto" }}>
+            <table>
+              <thead><tr><th>Tipo</th><th>Expediente</th><th>Notificado</th><th>Fecha límite</th><th>Plazo</th><th>Estado</th>{puedeEditar && <th></th>}</tr></thead>
+              <tbody>
+                {requerimientos.map((r, i) => {
+                  const d = diasRestantes(r.fechaLimite);
+                  const resp = r.estado === "Respondido";
+                  return (
+                    <tr key={i}>
+                      <td><b>{r.tipo}</b>{r.descripcion && <><br /><span className="muted">{r.descripcion}</span></>}</td>
+                      <td className="muted">{r.expediente || "—"}</td>
+                      <td className="muted">{r.fechaNotificacion || "—"}</td>
+                      <td className="muted">{r.fechaLimite || "—"}</td>
+                      <td>{resp ? <span className="badge badge-reg">—</span> : d === null ? "—" : d < 0 ? <span className="badge badge-red">Vencido</span> : <span className={`badge ${d <= 5 ? "badge-red" : d <= 15 ? "badge-tram" : "badge-blue"}`}>{d} día(s)</span>}</td>
+                      <td>{resp ? <span className="badge badge-reg">Respondido</span> : (d !== null && d < 0) ? <span className="badge badge-red">Vencido</span> : <span className="badge badge-tram">Pendiente</span>}</td>
+                      {puedeEditar && (
+                        <td style={{ whiteSpace: "nowrap" }}>
+                          {!resp && <button className="btn btn-outline btn-sm" onClick={() => cambiarEstadoReq(i, "Respondido")}>✓</button>}{" "}
+                          <button className="btn btn-danger btn-sm" onClick={() => quitarReq(i)}>✕</button>
+                        </td>
+                      )}
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <p className="muted">Sin requerimientos registrados. Cuando la SIC publique uno en el expediente (SIPI), regístralo aquí para controlar el plazo.</p>
+        )}
+
+        {puedeEditar && (
+          <div style={{ marginTop: 16, borderTop: "1px solid var(--gris-borde)", paddingTop: 16 }}>
+            <div className="grid-2">
+              <div className="field"><label>Tipo de requerimiento</label>
+                <select value={req.tipo} onChange={(e) => setReq({ ...req, tipo: e.target.value })}>
+                  <option>Requerimiento de forma</option><option>Requerimiento de fondo</option><option>Oposición de tercero</option><option>Otro</option>
+                </select></div>
+              <div className="field"><label>Expediente / radicado</label>
+                <input value={req.expediente} onChange={(e) => setReq({ ...req, expediente: e.target.value })} placeholder="Ej: SD2024/0012345" /></div>
+            </div>
+            <div className="grid-2">
+              <div className="field"><label>Fecha de notificación</label>
+                <input type="date" value={req.fechaNotificacion} onChange={(e) => setReq({ ...req, fechaNotificacion: e.target.value })} /></div>
+              <div className="field"><label>Fecha límite para responder</label>
+                <input type="date" value={req.fechaLimite} onChange={(e) => setReq({ ...req, fechaLimite: e.target.value })} /></div>
+            </div>
+            <div className="field"><label>Descripción / qué solicita la SIC</label>
+              <textarea rows={2} value={req.descripcion} onChange={(e) => setReq({ ...req, descripcion: e.target.value })} placeholder="Ej: aclarar la descripción de productos de la clase 25" /></div>
+            <button className="btn btn-primary" onClick={agregarReq} disabled={guardandoReq}>{guardandoReq ? "Guardando…" : "＋ Registrar requerimiento"}</button>
+          </div>
+        )}
+        <div className="note note-warn">
+          El <b>requerimiento de forma</b> suele dar <b>60 días hábiles</b> para responder; si no se responde, la solicitud se declara abandonada. Confirma siempre la fecha exacta en el expediente de SIPI.
         </div>
       </div>
 

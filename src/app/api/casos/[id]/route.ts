@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser, requirePermission, AuthError } from "@/lib/auth";
-import { getCaso, deleteCaso, updateChecklist, updateAntecedentesSIPI } from "@/lib/models";
+import { getCaso, deleteCaso, updateChecklist, updateAntecedentesSIPI, updateRequerimientos } from "@/lib/models";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -21,6 +21,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     const body = await req.json();
     if (body.checklist) await updateChecklist(id, body.checklist);
     if (Array.isArray(body.antecedentesSIPI)) await updateAntecedentesSIPI(id, body.antecedentesSIPI);
+    if (Array.isArray(body.requerimientos)) await updateRequerimientos(id, body.requerimientos);
     return NextResponse.json({ ok: true });
   } catch (e) {
     const err = e as AuthError;

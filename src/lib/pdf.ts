@@ -134,6 +134,23 @@ export async function generarPDF(c: CasoRow): Promise<void> {
     y = doc.lastAutoTable.finalY + 18;
   }
 
+  /* Requerimientos / seguimiento del expediente */
+  if (c.requerimientos && c.requerimientos.length) {
+    if (y > 640) { doc.addPage(); y = 60; }
+    doc.setFont("helvetica", "bold"); doc.setFontSize(12); doc.setTextColor(...oscuro);
+    doc.text("Requerimientos y seguimiento del expediente", M, y); y += 6;
+    autoTable(doc, {
+      startY: y, margin: { left: M, right: M },
+      head: [["Tipo", "Expediente", "Notificado", "Fecha límite", "Estado"]],
+      body: c.requerimientos.map((r) => [r.tipo + (r.descripcion ? ` — ${r.descripcion}` : ""), r.expediente || "-", r.fechaNotificacion || "-", r.fechaLimite || "-", r.estado]),
+      styles: { font: "helvetica", fontSize: 8.5, cellPadding: 4 },
+      headStyles: { fillColor: [217, 130, 0], textColor: 255 },
+      alternateRowStyles: { fillColor: [255, 248, 240] },
+    });
+    // @ts-expect-error lastAutoTable inyectado por el plugin
+    y = doc.lastAutoTable.finalY + 18;
+  }
+
   /* Empresas en Cámara de Comercio */
   if (a.empresasRUES && a.empresasRUES.length) {
     if (y > 640) { doc.addPage(); y = 60; }
