@@ -23,7 +23,7 @@ export default async function CasoDetallePage({ params }: { params: Promise<{ id
           <Link className="btn btn-outline btn-sm" href="/casos">← Volver a casos</Link>
         </div>
       </div>
-      <ResultadoViabilidad caso={caso} puedeDescargar={user.permisos.descargar} />
+      <ResultadoViabilidad caso={caso} puedeDescargar={user.permisos.descargar} puedeEditar={user.permisos.revisar} />
     </>
   );
 }

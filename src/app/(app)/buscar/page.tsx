@@ -23,7 +23,7 @@ export default async function BuscarPage() {
           <a href={PROCESO_INFO.portalOficial} target="_blank" rel="noopener noreferrer">SIPI (SIC) ↗</a>.
         </p>
       </div>
-      <BuscarClient puedeDescargar={user.permisos.descargar} />
+      <BuscarClient puedeDescargar={user.permisos.descargar} puedeEditar={user.permisos.revisar} />
     </>
   );
 }

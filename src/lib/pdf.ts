@@ -117,6 +117,23 @@ export async function generarPDF(c: CasoRow): Promise<void> {
   y = (doc.lastAutoTable?.finalY ?? y) + 18;
   const cop = (n: number) => new Intl.NumberFormat("es-CO", { style: "currency", currency: "COP", maximumFractionDigits: 0 }).format(n);
 
+  /* Antecedentes verificados en SIPI (captura del abogado) */
+  if (c.antecedentesSIPI && c.antecedentesSIPI.length) {
+    if (y > 640) { doc.addPage(); y = 60; }
+    doc.setFont("helvetica", "bold"); doc.setFontSize(12); doc.setTextColor(...oscuro);
+    doc.text("Antecedentes verificados en SIPI (SIC)", M, y); y += 6;
+    autoTable(doc, {
+      startY: y, margin: { left: M, right: M },
+      head: [["Marca", "Clase", "Estado", "Expediente", "Titular"]],
+      body: c.antecedentesSIPI.map((x) => [x.marca, String(x.clase), x.estado, x.expediente || "-", x.titular || "-"]),
+      styles: { font: "helvetica", fontSize: 8.5, cellPadding: 4 },
+      headStyles: { fillColor: [18, 146, 75], textColor: 255 },
+      alternateRowStyles: { fillColor: [246, 251, 248] },
+    });
+    // @ts-expect-error lastAutoTable inyectado por el plugin
+    y = doc.lastAutoTable.finalY + 18;
+  }
+
   /* Empresas en Cámara de Comercio */
   if (a.empresasRUES && a.empresasRUES.length) {
     if (y > 640) { doc.addPage(); y = 60; }

@@ -5,7 +5,7 @@ import { NICE_CLASSES, PROCESO_INFO, claseTitulo, sugerirClasesDesc, buscarClase
 import type { CasoRow } from "@/lib/models";
 import ResultadoViabilidad from "./ResultadoViabilidad";
 
-export default function BuscarClient({ puedeDescargar }: { puedeDescargar: boolean }) {
+export default function BuscarClient({ puedeDescargar, puedeEditar = false }: { puedeDescargar: boolean; puedeEditar?: boolean }) {
   const [nombre, setNombre] = useState("");
   const [tipo, setTipo] = useState("Nominativa");
   const [titular, setTitular] = useState("");
@@ -177,7 +177,7 @@ export default function BuscarClient({ puedeDescargar }: { puedeDescargar: boole
 
       {caso && (
         <div id="resultado" style={{ marginTop: 18 }}>
-          <ResultadoViabilidad caso={caso} puedeDescargar={puedeDescargar} />
+          <ResultadoViabilidad caso={caso} puedeDescargar={puedeDescargar} puedeEditar={puedeEditar} />
         </div>
       )}
     </>

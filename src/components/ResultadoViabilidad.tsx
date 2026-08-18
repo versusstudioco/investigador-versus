@@ -1,9 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import type { CasoRow } from "@/lib/models";
+import type { CasoRow, AntecedenteSIPI } from "@/lib/models";
 import { generarPDF } from "@/lib/pdf";
-import { PROCESO_INFO } from "@/lib/nice";
+import { PROCESO_INFO, NICE_CLASSES } from "@/lib/nice";
 
 function badgeEstado(e: string) {
   const m: Record<string, string> = { Registrada: "badge-reg", "En trámite": "badge-tram", Negada: "badge-red" };
@@ -12,13 +12,47 @@ function badgeEstado(e: string) {
 
 const cop = (n: number) => new Intl.NumberFormat("es-CO", { style: "currency", currency: "COP", maximumFractionDigits: 0 }).format(n);
 
-export default function ResultadoViabilidad({ caso, puedeDescargar }: { caso: CasoRow; puedeDescargar: boolean }) {
+export default function ResultadoViabilidad({ caso, puedeDescargar, puedeEditar = false }: { caso: CasoRow; puedeDescargar: boolean; puedeEditar?: boolean }) {
   const a = caso.analisis;
   const [gen, setGen] = useState(false);
 
+  // Verificación SIPI (captura manual del abogado)
+  const [antecedentes, setAntecedentes] = useState<AntecedenteSIPI[]>(caso.antecedentesSIPI || []);
+  const [ant, setAnt] = useState({ marca: caso.nombre, clase: String(caso.clases[0] || ""), estado: "Registrada", expediente: "", titular: "" });
+  const [guardando, setGuardando] = useState(false);
+
+  const casoConAnt = { ...caso, antecedentesSIPI: antecedentes };
+
   async function descargar() {
     setGen(true);
-    try { await generarPDF(caso); } finally { setGen(false); }
+    try { await generarPDF(casoConAnt); } finally { setGen(false); }
+  }
+
+  async function agregarAntecedente() {
+    if (!ant.marca.trim() || !ant.clase) return alert("Marca y clase son obligatorias.");
+    const nuevo: AntecedenteSIPI = {
+      marca: ant.marca.trim(), clase: Number(ant.clase), estado: ant.estado,
+      expediente: ant.expediente.trim(), titular: ant.titular.trim(),
+      registradoPor: caso.autor || "—", fecha: new Date().toISOString(),
+    };
+    const lista = [...antecedentes, nuevo];
+    setGuardando(true);
+    const res = await fetch(`/api/casos/${caso.id}`, {
+      method: "PATCH", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ antecedentesSIPI: lista }),
+    });
+    setGuardando(false);
+    if (res.ok) { setAntecedentes(lista); setAnt({ ...ant, expediente: "", titular: "" }); }
+    else alert("No se pudo guardar el antecedente.");
+  }
+
+  async function quitarAntecedente(i: number) {
+    const lista = antecedentes.filter((_, idx) => idx !== i);
+    const res = await fetch(`/api/casos/${caso.id}`, {
+      method: "PATCH", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ antecedentesSIPI: lista }),
+    });
+    if (res.ok) setAntecedentes(lista);
   }
 
   return (
@@ -86,12 +120,75 @@ export default function ResultadoViabilidad({ caso, puedeDescargar }: { caso: Ca
       </div>
 
       <div className="card">
+        <div className="flex-between">
+          <div>
+            <h2>Verificación oficial en SIPI (SIC)</h2>
+            <div className="card-desc">Registra los antecedentes que el abogado verificó directamente en SIPI. Entran al informe como dato oficial.</div>
+          </div>
+          <a className="btn btn-ghost" href={PROCESO_INFO.portalOficial} target="_blank" rel="noopener noreferrer">Abrir SIPI ↗</a>
+        </div>
+
+        {antecedentes.length > 0 ? (
+          <div style={{ overflowX: "auto" }}>
+            <table>
+              <thead><tr><th>Marca</th><th>Clase</th><th>Estado</th><th>Expediente</th><th>Titular</th><th>Registró</th>{puedeEditar && <th></th>}</tr></thead>
+              <tbody>
+                {antecedentes.map((x, i) => (
+                  <tr key={i}>
+                    <td><b>{x.marca}</b></td>
+                    <td>{x.clase}</td>
+                    <td>{badgeEstado(x.estado)}</td>
+                    <td className="muted">{x.expediente || "—"}</td>
+                    <td className="muted">{x.titular || "—"}</td>
+                    <td className="muted">{x.registradoPor}</td>
+                    {puedeEditar && <td><button className="btn btn-danger btn-sm" onClick={() => quitarAntecedente(i)}>✕</button></td>}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <p className="muted">Aún no hay antecedentes verificados en SIPI para este caso.</p>
+        )}
+
+        {puedeEditar && (
+          <div style={{ marginTop: 16, borderTop: "1px solid var(--gris-borde)", paddingTop: 16 }}>
+            <div className="grid-2">
+              <div className="field"><label>Marca hallada en SIPI</label>
+                <input value={ant.marca} onChange={(e) => setAnt({ ...ant, marca: e.target.value })} /></div>
+              <div className="field"><label>Clase</label>
+                <select value={ant.clase} onChange={(e) => setAnt({ ...ant, clase: e.target.value })}>
+                  <option value="">Clase…</option>
+                  {NICE_CLASSES.map((n) => <option key={n.c} value={n.c}>Clase {n.c} — {n.t.slice(0, 40)}</option>)}
+                </select></div>
+            </div>
+            <div className="grid-2">
+              <div className="field"><label>Estado</label>
+                <select value={ant.estado} onChange={(e) => setAnt({ ...ant, estado: e.target.value })}>
+                  <option>Registrada</option><option>En trámite</option><option>Negada</option><option>Caducada</option>
+                </select></div>
+              <div className="field"><label>Expediente / radicado</label>
+                <input value={ant.expediente} onChange={(e) => setAnt({ ...ant, expediente: e.target.value })} placeholder="Ej: SD2020/0044120" /></div>
+            </div>
+            <div className="field"><label>Titular</label>
+              <input value={ant.titular} onChange={(e) => setAnt({ ...ant, titular: e.target.value })} placeholder="Titular de la marca hallada" /></div>
+            <button className="btn btn-primary" onClick={agregarAntecedente} disabled={guardando}>
+              {guardando ? "Guardando…" : "＋ Agregar antecedente verificado"}
+            </button>
+          </div>
+        )}
+        <div className="note note-warn">
+          SIPI no ofrece API pública; estos antecedentes los <b>verifica y registra el abogado</b> tras consultar en el portal oficial, para dejarlos en el informe con validez.
+        </div>
+      </div>
+
+      <div className="card">
         <h2>Coincidencias en Cámara de Comercio</h2>
         <div className="card-desc">Empresas con razón social igual o parecida (Registro Mercantil).</div>
         {a.empresasRUES && a.empresasRUES.length > 0 ? (
           <div style={{ overflowX: "auto" }}>
             <table>
-              <thead><tr><th>Razón social</th><th>NIT</th><th>Municipio</th><th>Actividad</th></tr></thead>
+              <thead><tr><th>Razón social</th><th>NIT</th><th>Ubicación</th><th>Detalle</th><th>Fuente</th></tr></thead>
               <tbody>
                 {a.empresasRUES.map((e, i) => (
                   <tr key={i}>
@@ -99,16 +196,17 @@ export default function ResultadoViabilidad({ caso, puedeDescargar }: { caso: Ca
                     <td className="muted">{e.nit}</td>
                     <td className="muted">{e.municipio}</td>
                     <td className="muted">{e.actividad}</td>
+                    <td><span className="badge badge-blue">{e.fuente}</span></td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
         ) : (
-          <p className="muted">No se hallaron empresas con ese nombre en el conjunto de datos consultado.</p>
+          <p className="muted">No se hallaron empresas con ese nombre en las cámaras consultadas.</p>
         )}
         <div className="note">
-          Consulta automática sobre datos abiertos oficiales (cobertura parcial). Verifica la cobertura nacional completa en{" "}
+          Consulta automática sobre datos abiertos oficiales de varias cámaras (cobertura amplia, no total). Para la verificación nacional completa consulta{" "}
           <a href="https://www.rues.org.co" target="_blank" rel="noopener noreferrer">RUES ↗</a> (Registro Único Empresarial).
         </div>
       </div>

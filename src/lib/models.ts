@@ -115,6 +115,16 @@ export async function deleteUsuario(id: string): Promise<void> {
 }
 
 /* ============================ CASOS ============================ */
+export type AntecedenteSIPI = {
+  marca: string;
+  clase: number;
+  estado: string;
+  expediente: string;
+  titular: string;
+  registradoPor: string;
+  fecha: string;
+};
+
 export type CasoRow = {
   id: string;
   nombre: string;
@@ -124,6 +134,7 @@ export type CasoRow = {
   descripcion: string;
   analisis: Analisis;
   checklist: Record<string, boolean>;
+  antecedentesSIPI: AntecedenteSIPI[];
   autor: string;
   autorId: string;
   fecha: string;
@@ -137,6 +148,7 @@ type CasoDoc = {
   descripcion: string;
   analisis: Analisis;
   checklist: Record<string, boolean>;
+  antecedentes_sipi?: AntecedenteSIPI[];
   autor: string;
   autor_id: string;
   creado_en: string;
@@ -152,6 +164,7 @@ function mapCaso(id: string, c: CasoDoc): CasoRow {
     descripcion: c.descripcion ?? "",
     analisis: c.analisis,
     checklist: c.checklist ?? {},
+    antecedentesSIPI: c.antecedentes_sipi ?? [],
     autor: c.autor ?? "",
     autorId: c.autor_id ?? "",
     fecha: c.creado_en,
@@ -192,6 +205,7 @@ export async function createCaso(c: CasoInput): Promise<CasoRow> {
     descripcion: c.descripcion,
     analisis: c.analisis,
     checklist: {},
+    antecedentes_sipi: [],
     autor: c.autor,
     autor_id: c.autorId,
     creado_en: new Date().toISOString(),
@@ -203,6 +217,11 @@ export async function createCaso(c: CasoInput): Promise<CasoRow> {
 export async function updateChecklist(id: string, checklist: Record<string, boolean>): Promise<void> {
   const db = await getDb();
   await db.collection("casos").doc(id).update({ checklist });
+}
+
+export async function updateAntecedentesSIPI(id: string, antecedentes: AntecedenteSIPI[]): Promise<void> {
+  const db = await getDb();
+  await db.collection("casos").doc(id).update({ antecedentes_sipi: antecedentes });
 }
 
 export async function deleteCaso(id: string): Promise<void> {
