@@ -124,16 +124,16 @@ export default function UsuariosManager({ usuariosIniciales }: { usuariosInicial
             <div className="field"><label>Permisos</label>
               <div className="chips" style={{ gap: 14 }}>
                 {PERMS.map(([k, l]) => (
-                  <label key={k} style={{ display: "flex", gap: 6, alignItems: "center", fontSize: 13, fontWeight: 600 }}>
-                    <input type="checkbox" checked={draft.permisos[k]} style={{ width: 16, height: 16, accentColor: "var(--rojo)" }}
+                  <label key={k} style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 13, fontWeight: 600 }}>
+                    <input type="checkbox" className="switch" checked={draft.permisos[k]}
                       onChange={(e) => setDraft({ ...draft, permisos: { ...draft.permisos, [k]: e.target.checked } })} /> {l}
                   </label>
                 ))}
               </div>
             </div>
             <div className="field">
-              <label style={{ display: "flex", gap: 6, alignItems: "center", fontSize: 13, fontWeight: 600 }}>
-                <input type="checkbox" checked={draft.activo} style={{ width: 16, height: 16, accentColor: "var(--rojo)" }}
+              <label style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 13, fontWeight: 600 }}>
+                <input type="checkbox" className="switch" checked={draft.activo}
                   onChange={(e) => setDraft({ ...draft, activo: e.target.checked })} /> Usuario activo
               </label>
             </div>

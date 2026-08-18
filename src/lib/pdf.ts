@@ -113,6 +113,54 @@ export async function generarPDF(c: CasoRow): Promise<void> {
     doc.text("No se hallaron coincidencias relevantes en la base de referencia.", M, y + 14);
   }
 
+  // @ts-expect-error lastAutoTable inyectado por el plugin
+  y = (doc.lastAutoTable?.finalY ?? y) + 18;
+  const cop = (n: number) => new Intl.NumberFormat("es-CO", { style: "currency", currency: "COP", maximumFractionDigits: 0 }).format(n);
+
+  /* Clases sugeridas */
+  if (a.clasesSugeridas && a.clasesSugeridas.length) {
+    if (y > 640) { doc.addPage(); y = 60; }
+    doc.setFont("helvetica", "bold"); doc.setFontSize(12); doc.setTextColor(...oscuro);
+    doc.text("Clases sugeridas según la descripción", M, y); y += 6;
+    autoTable(doc, {
+      startY: y, margin: { left: M, right: M },
+      head: [["Clase", "Cobertura", "Por qué", "¿Registro?"]],
+      body: a.clasesSugeridas.map((s) => [`Clase ${s.c}`, s.titulo, s.motivo, s.yaRegistrada ? "Sí" : "No"]),
+      styles: { font: "helvetica", fontSize: 8.5, cellPadding: 4 },
+      headStyles: { fillColor: oscuro, textColor: 255 },
+      alternateRowStyles: { fillColor: [248, 251, 255] },
+    });
+    // @ts-expect-error lastAutoTable inyectado por el plugin
+    y = doc.lastAutoTable.finalY + 18;
+  }
+
+  /* Cotización */
+  if (a.cotizacion) {
+    if (y > 620) { doc.addPage(); y = 60; }
+    doc.setFont("helvetica", "bold"); doc.setFontSize(12); doc.setTextColor(...oscuro);
+    doc.text("Cotización estimada para el cliente", M, y); y += 6;
+    const cz = a.cotizacion;
+    const body: string[][] = [
+      [`Honorarios profesionales (complejidad ${cz.complejidad})`, cop(cz.honorarios)],
+      [`Tasa oficial SIC — 1a clase ${cz.mipyme ? "(MiPyme)" : ""}`, cop(cz.tasaPrimera)],
+    ];
+    if (cz.numClases > 1) body.push([`Clases adicionales: ${cz.numClases - 1} x ${cop(cz.tasaAdicional)}`, cop(cz.tasaAdicional * (cz.numClases - 1))]);
+    body.push(["TOTAL ESTIMADO", cop(cz.total)]);
+    autoTable(doc, {
+      startY: y, margin: { left: M, right: M },
+      head: [["Concepto", "Valor (COP)"]],
+      body,
+      styles: { font: "helvetica", fontSize: 10, cellPadding: 6 },
+      headStyles: { fillColor: rojo, textColor: 255 },
+      columnStyles: { 1: { halign: "right" } },
+      didParseCell: (data) => { if (data.row.index === body.length - 1) { data.cell.styles.fontStyle = "bold"; data.cell.styles.fillColor = celeste as [number, number, number]; } },
+    });
+    // @ts-expect-error lastAutoTable inyectado por el plugin
+    y = doc.lastAutoTable.finalY + 6;
+    doc.setFont("helvetica", "normal"); doc.setFontSize(8); doc.setTextColor(...gris);
+    doc.text(doc.splitTextToSize("Honorarios estimados según complejidad; la tasa corresponde a la SIC (una por clase). Cotización de orientación, sujeta a confirmación del estudio.", W - 2 * M), M, y + 10);
+  }
+
   const H = doc.internal.pageSize.getHeight();
   const pages = doc.getNumberOfPages();
   for (let i = 1; i <= pages; i++) {

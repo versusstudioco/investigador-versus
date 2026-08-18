@@ -11,6 +11,7 @@ export default function BuscarClient({ puedeDescargar }: { puedeDescargar: boole
   const [titular, setTitular] = useState("");
   const [clases, setClases] = useState<number[]>([]);
   const [descripcion, setDescripcion] = useState("");
+  const [mipyme, setMipyme] = useState(false);
   const [caso, setCaso] = useState<CasoRow | null>(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -31,7 +32,7 @@ export default function BuscarClient({ puedeDescargar }: { puedeDescargar: boole
     const res = await fetch("/api/casos", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ nombre, tipo, titular, clases, descripcion }),
+      body: JSON.stringify({ nombre, tipo, titular, clases, descripcion, mipyme }),
     });
     setLoading(false);
     if (res.ok) {
@@ -78,6 +79,13 @@ export default function BuscarClient({ puedeDescargar }: { puedeDescargar: boole
           <div className="field">
             <label>Descripción de productos / servicios</label>
             <textarea rows={2} value={descripcion} onChange={(e) => setDescripcion(e.target.value)} placeholder="Ej: prendas de vestir y calzado para dama" />
+            <p className="muted" style={{ marginTop: 4 }}>Con la descripción, el sistema sugiere las clases de Niza que corresponden.</p>
+          </div>
+          <div className="field">
+            <label style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }}>
+              <input type="checkbox" className="switch" checked={mipyme} onChange={(e) => setMipyme(e.target.checked)} />
+              El titular es <b>MiPyme</b> (aplica tarifa reducida de la SIC)
+            </label>
           </div>
           {error && <div className="login-error">{error}</div>}
           <div className="row">

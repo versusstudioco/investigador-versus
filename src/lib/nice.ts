@@ -117,6 +117,52 @@ export const PROCESO_INFO = {
   portalOficial: "https://sipi.sic.gov.co",
 };
 
+/* ------------------------------------------------------------
+   PRECIOS / COTIZACIÓN (COP)
+   Honorarios varían por complejidad (editables por el estudio).
+   Tasa oficial de la SIC por clase (normal vs. MiPyme).
+------------------------------------------------------------ */
+export const PRECIOS = {
+  honorarios: { baja: 1_300_000, media: 1_900_000, alta: 2_600_000 },
+  tasaNormal: { primera: 1_347_000, adicional: 673_000 },
+  tasaMipyme: { primera: 970_000, adicional: 485_000 },
+};
+
+/* ------------------------------------------------------------
+   Diccionario de palabras clave → clase de Niza
+   (para sugerir clases a partir de la descripción)
+------------------------------------------------------------ */
+export const KEYWORDS_CLASE: { c: number; kw: string[] }[] = [
+  { c: 3, kw: ["cosmetico", "cosmeticos", "perfume", "perfumeria", "maquillaje", "crema", "cremas", "jabon", "shampoo", "belleza", "labial", "loción", "locion", "desodorante"] },
+  { c: 5, kw: ["farmaceutico", "medicamento", "medicamentos", "vitamina", "suplemento", "higienico", "medicinal", "droga", "salud"] },
+  { c: 9, kw: ["software", "app", "aplicacion", "aplicaciones", "plataforma", "sistema", "programa", "electronico", "electronica", "celular", "computador", "hardware", "videojuego", "descargable"] },
+  { c: 14, kw: ["joya", "joyeria", "joyas", "reloj", "relojes", "oro", "plata", "bisuteria", "anillo", "collar", "arete"] },
+  { c: 16, kw: ["papel", "papeleria", "imprenta", "revista", "libro", "libros", "cuaderno", "impreso", "material educativo"] },
+  { c: 18, kw: ["cuero", "bolso", "bolsos", "marroquineria", "maleta", "maletas", "cartera", "morral", "correa", "paraguas"] },
+  { c: 20, kw: ["mueble", "muebles", "silla", "mesa", "cama", "colchon", "espejo", "madera"] },
+  { c: 21, kw: ["utensilio", "cocina", "vajilla", "cristaleria", "recipiente", "termo", "vaso"] },
+  { c: 24, kw: ["textil", "textiles", "tejido", "sabana", "sabanas", "toalla", "cortina", "ropa de cama"] },
+  { c: 25, kw: ["ropa", "vestir", "vestido", "camisa", "camiseta", "pantalon", "calzado", "zapato", "zapatos", "tenis", "moda", "prenda", "prendas", "chaqueta", "sombreria", "gorra", "medias", "ropa interior", "confeccion", "confecciones"] },
+  { c: 28, kw: ["juguete", "juguetes", "juego", "deporte", "deportivo", "gimnasia", "balon"] },
+  { c: 29, kw: ["carne", "pescado", "lacteo", "lacteos", "queso", "leche", "aceite comestible", "conserva", "embutido", "huevo"] },
+  { c: 30, kw: ["cafe", "te", "harina", "pan", "panaderia", "pasteleria", "postre", "chocolate", "salsa", "especia", "arroz", "galleta", "dulce"] },
+  { c: 31, kw: ["agricola", "planta", "plantas", "semilla", "fruta", "verdura", "animal vivo", "mascota", "alimento para animales", "flores"] },
+  { c: 32, kw: ["cerveza", "agua", "jugo", "refresco", "gaseosa", "bebida sin alcohol", "energizante"] },
+  { c: 33, kw: ["licor", "aguardiente", "ron", "vino", "whisky", "vodka", "bebida alcoholica", "tequila", "cerveza artesanal"] },
+  { c: 34, kw: ["tabaco", "cigarrillo", "cigarro", "vapeador", "vaporizador", "fumar"] },
+  { c: 35, kw: ["publicidad", "marketing", "mercadeo", "tienda", "comercio", "venta", "retail", "ecommerce", "comercializacion", "administracion de negocios", "gestion empresarial"] },
+  { c: 36, kw: ["financiero", "finanzas", "seguro", "seguros", "inmobiliaria", "banco", "credito", "inversion"] },
+  { c: 37, kw: ["construccion", "reparacion", "instalacion", "obra", "remodelacion", "mantenimiento"] },
+  { c: 38, kw: ["telecomunicaciones", "internet", "telefonia", "comunicaciones", "señal"] },
+  { c: 39, kw: ["transporte", "logistica", "envio", "domicilio", "mensajeria", "almacenamiento", "viaje", "turismo"] },
+  { c: 40, kw: ["manufactura", "produccion", "fabricacion", "impresion", "maquila", "tratamiento de materiales"] },
+  { c: 41, kw: ["educacion", "formacion", "capacitacion", "curso", "cursos", "entretenimiento", "academia", "colegio", "escuela", "deportiva", "cultural", "evento", "eventos"] },
+  { c: 42, kw: ["desarrollo de software", "diseño de software", "tecnologia", "programacion", "ingenieria", "cientifico", "diseño web", "saas", "hosting", "ciberseguridad"] },
+  { c: 43, kw: ["restaurante", "restaurantes", "comida", "alimentacion", "bar", "cafeteria", "cafe servicio", "hotel", "hospedaje", "hosteleria", "catering", "gastronomia", "cocina servicio"] },
+  { c: 44, kw: ["medico", "clinica", "salud servicio", "veterinario", "veterinaria", "estetica", "spa", "peluqueria", "barberia", "odontologia", "belleza servicio", "agricultura servicio"] },
+  { c: 45, kw: ["juridico", "juridicos", "abogado", "legal", "seguridad", "vigilancia", "notaria", "servicios personales"] },
+];
+
 export const PALABRAS_DEBILES = [
   "premium", "original", "natural", "express", "digital", "global", "colombia", "nacional",
   "super", "mega", "pro", "plus", "gold", "oro", "el", "la", "los", "las", "de", "del", "y",
