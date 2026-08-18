@@ -1,6 +1,7 @@
 import { getDb } from "./db";
 import { hashPassword } from "./auth";
 import type { Analisis } from "./viability";
+import type { Permisos } from "./auth";
 
 /* ============================ USUARIOS ============================ */
 export type UsuarioRow = {
@@ -8,41 +9,51 @@ export type UsuarioRow = {
   usuario: string;
   nombre: string;
   rol: string;
-  permisos: { buscar: boolean; revisar: boolean; descargar: boolean; admin: boolean };
+  permisos: Permisos;
   activo: boolean;
   creado_en: string;
 };
 
-function mapUser(r: Record<string, unknown>): UsuarioRow {
+/* Shape que necesita el login (incluye hash/salt) */
+export type UsuarioAuth = UsuarioRow & { hash: string; salt: string };
+
+type UserDoc = {
+  usuario: string;
+  usuario_lower: string;
+  nombre: string;
+  rol: string;
+  hash: string;
+  salt: string;
+  permisos: Permisos;
+  activo: boolean;
+  creado_en: string;
+};
+
+function toPermisos(p: Partial<Permisos> | undefined): Permisos {
   return {
-    id: String(r.id),
-    usuario: String(r.usuario),
-    nombre: String(r.nombre),
-    rol: String(r.rol),
-    permisos: {
-      buscar: !!Number(r.perm_buscar),
-      revisar: !!Number(r.perm_revisar),
-      descargar: !!Number(r.perm_descargar),
-      admin: !!Number(r.perm_admin),
-    },
-    activo: !!Number(r.activo),
-    creado_en: String(r.creado_en),
+    buscar: !!p?.buscar,
+    revisar: !!p?.revisar,
+    descargar: !!p?.descargar,
+    admin: !!p?.admin,
   };
 }
 
 export async function listUsuarios(): Promise<UsuarioRow[]> {
   const db = await getDb();
-  const res = await db.execute("SELECT * FROM users ORDER BY creado_en ASC");
-  return res.rows.map((r) => mapUser(r as Record<string, unknown>));
+  const snap = await db.collection("users").orderBy("creado_en", "asc").get();
+  return snap.docs.map((d) => {
+    const u = d.data() as UserDoc;
+    return { id: d.id, usuario: u.usuario, nombre: u.nombre, rol: u.rol, permisos: toPermisos(u.permisos), activo: !!u.activo, creado_en: u.creado_en };
+  });
 }
 
-export async function getUsuarioByLogin(usuario: string) {
+export async function getUsuarioByLogin(usuario: string): Promise<UsuarioAuth | null> {
   const db = await getDb();
-  const res = await db.execute({
-    sql: "SELECT * FROM users WHERE lower(usuario) = lower(?) LIMIT 1",
-    args: [usuario.trim()],
-  });
-  return res.rows[0] as Record<string, unknown> | undefined;
+  const snap = await db.collection("users").where("usuario_lower", "==", usuario.trim().toLowerCase()).limit(1).get();
+  if (snap.empty) return null;
+  const d = snap.docs[0];
+  const u = d.data() as UserDoc;
+  return { id: d.id, usuario: u.usuario, nombre: u.nombre, rol: u.rol, permisos: toPermisos(u.permisos), activo: !!u.activo, creado_en: u.creado_en, hash: u.hash, salt: u.salt };
 }
 
 export type UsuarioInput = {
@@ -50,54 +61,57 @@ export type UsuarioInput = {
   nombre: string;
   rol: string;
   password?: string;
-  permisos: { buscar: boolean; revisar: boolean; descargar: boolean; admin: boolean };
+  permisos: Permisos;
   activo: boolean;
 };
+
+export async function existsOtherWithLogin(usuario: string, exceptId: string): Promise<boolean> {
+  const db = await getDb();
+  const snap = await db.collection("users").where("usuario_lower", "==", usuario.trim().toLowerCase()).get();
+  return snap.docs.some((d) => d.id !== exceptId);
+}
 
 export async function createUsuario(u: UsuarioInput): Promise<void> {
   const db = await getDb();
   if (!u.password) throw new Error("La contraseña es obligatoria.");
   const { hash, salt } = await hashPassword(u.password);
-  await db.execute({
-    sql: `INSERT INTO users
-      (id, usuario, nombre, rol, hash, salt, perm_buscar, perm_revisar, perm_descargar, perm_admin, activo, creado_en)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    args: [
-      crypto.randomUUID(), u.usuario.trim(), u.nombre.trim(), u.rol, hash, salt,
-      u.permisos.buscar ? 1 : 0, u.permisos.revisar ? 1 : 0, u.permisos.descargar ? 1 : 0,
-      u.permisos.admin ? 1 : 0, u.activo ? 1 : 0, new Date().toISOString(),
-    ],
+  await db.collection("users").doc(crypto.randomUUID()).set({
+    usuario: u.usuario.trim(),
+    usuario_lower: u.usuario.trim().toLowerCase(),
+    nombre: u.nombre.trim(),
+    rol: u.rol,
+    hash,
+    salt,
+    permisos: toPermisos(u.permisos),
+    activo: u.activo,
+    creado_en: new Date().toISOString(),
   });
 }
 
 export async function updateUsuario(id: string, u: UsuarioInput): Promise<void> {
   const db = await getDb();
-  await db.execute({
-    sql: `UPDATE users SET usuario=?, nombre=?, rol=?, perm_buscar=?, perm_revisar=?, perm_descargar=?, perm_admin=?, activo=? WHERE id=?`,
-    args: [
-      u.usuario.trim(), u.nombre.trim(), u.rol,
-      u.permisos.buscar ? 1 : 0, u.permisos.revisar ? 1 : 0, u.permisos.descargar ? 1 : 0,
-      u.permisos.admin ? 1 : 0, u.activo ? 1 : 0, id,
-    ],
-  });
+  const patch: Record<string, unknown> = {
+    usuario: u.usuario.trim(),
+    usuario_lower: u.usuario.trim().toLowerCase(),
+    nombre: u.nombre.trim(),
+    rol: u.rol,
+    permisos: toPermisos(u.permisos),
+    activo: u.activo,
+  };
   if (u.password) {
     const { hash, salt } = await hashPassword(u.password);
-    await db.execute({ sql: "UPDATE users SET hash=?, salt=? WHERE id=?", args: [hash, salt, id] });
+    patch.hash = hash;
+    patch.salt = salt;
   }
+  await db.collection("users").doc(id).update(patch);
 }
 
 export async function deleteUsuario(id: string): Promise<void> {
   const db = await getDb();
-  await db.execute({ sql: "DELETE FROM users WHERE id=? AND usuario <> 'ADMIN'", args: [id] });
-}
-
-export async function existsOtherWithLogin(usuario: string, exceptId: string): Promise<boolean> {
-  const db = await getDb();
-  const res = await db.execute({
-    sql: "SELECT id FROM users WHERE lower(usuario)=lower(?) AND id <> ? LIMIT 1",
-    args: [usuario.trim(), exceptId],
-  });
-  return res.rows.length > 0;
+  const ref = db.collection("users").doc(id);
+  const doc = await ref.get();
+  if (doc.exists && (doc.data() as UserDoc).usuario === "ADMIN") return; // protege al admin principal
+  await ref.delete();
 }
 
 /* ============================ CASOS ============================ */
@@ -115,33 +129,45 @@ export type CasoRow = {
   fecha: string;
 };
 
-function mapCaso(r: Record<string, unknown>): CasoRow {
+type CasoDoc = {
+  nombre: string;
+  tipo: string;
+  titular: string;
+  clases: number[];
+  descripcion: string;
+  analisis: Analisis;
+  checklist: Record<string, boolean>;
+  autor: string;
+  autor_id: string;
+  creado_en: string;
+};
+
+function mapCaso(id: string, c: CasoDoc): CasoRow {
   return {
-    id: String(r.id),
-    nombre: String(r.nombre),
-    tipo: String(r.tipo),
-    titular: String(r.titular ?? ""),
-    clases: JSON.parse(String(r.clases || "[]")),
-    descripcion: String(r.descripcion ?? ""),
-    analisis: JSON.parse(String(r.analisis)),
-    checklist: JSON.parse(String(r.checklist || "{}")),
-    autor: String(r.autor ?? ""),
-    autorId: String(r.autor_id ?? ""),
-    fecha: String(r.creado_en),
+    id,
+    nombre: c.nombre,
+    tipo: c.tipo,
+    titular: c.titular ?? "",
+    clases: c.clases ?? [],
+    descripcion: c.descripcion ?? "",
+    analisis: c.analisis,
+    checklist: c.checklist ?? {},
+    autor: c.autor ?? "",
+    autorId: c.autor_id ?? "",
+    fecha: c.creado_en,
   };
 }
 
 export async function listCasos(): Promise<CasoRow[]> {
   const db = await getDb();
-  const res = await db.execute("SELECT * FROM casos ORDER BY creado_en DESC");
-  return res.rows.map((r) => mapCaso(r as Record<string, unknown>));
+  const snap = await db.collection("casos").orderBy("creado_en", "desc").get();
+  return snap.docs.map((d) => mapCaso(d.id, d.data() as CasoDoc));
 }
 
 export async function getCaso(id: string): Promise<CasoRow | null> {
   const db = await getDb();
-  const res = await db.execute({ sql: "SELECT * FROM casos WHERE id=? LIMIT 1", args: [id] });
-  const row = res.rows[0] as Record<string, unknown> | undefined;
-  return row ? mapCaso(row) : null;
+  const doc = await db.collection("casos").doc(id).get();
+  return doc.exists ? mapCaso(doc.id, doc.data() as CasoDoc) : null;
 }
 
 export type CasoInput = {
@@ -158,26 +184,28 @@ export type CasoInput = {
 export async function createCaso(c: CasoInput): Promise<CasoRow> {
   const db = await getDb();
   const id = crypto.randomUUID();
-  const now = new Date().toISOString();
-  await db.execute({
-    sql: `INSERT INTO casos
-      (id, nombre, tipo, titular, clases, descripcion, score, nivel, color, analisis, checklist, autor, autor_id, creado_en)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, '{}', ?, ?, ?)`,
-    args: [
-      id, c.nombre, c.tipo, c.titular, JSON.stringify(c.clases), c.descripcion,
-      c.analisis.score, c.analisis.nivel, c.analisis.color, JSON.stringify(c.analisis),
-      c.autor, c.autorId, now,
-    ],
-  });
-  return (await getCaso(id))!;
+  const doc: CasoDoc = {
+    nombre: c.nombre,
+    tipo: c.tipo,
+    titular: c.titular,
+    clases: c.clases,
+    descripcion: c.descripcion,
+    analisis: c.analisis,
+    checklist: {},
+    autor: c.autor,
+    autor_id: c.autorId,
+    creado_en: new Date().toISOString(),
+  };
+  await db.collection("casos").doc(id).set(doc);
+  return mapCaso(id, doc);
 }
 
 export async function updateChecklist(id: string, checklist: Record<string, boolean>): Promise<void> {
   const db = await getDb();
-  await db.execute({ sql: "UPDATE casos SET checklist=? WHERE id=?", args: [JSON.stringify(checklist), id] });
+  await db.collection("casos").doc(id).update({ checklist });
 }
 
 export async function deleteCaso(id: string): Promise<void> {
   const db = await getDb();
-  await db.execute({ sql: "DELETE FROM casos WHERE id=?", args: [id] });
+  await db.collection("casos").doc(id).delete();
 }

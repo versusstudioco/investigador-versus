@@ -15,6 +15,11 @@ next-env.d.ts
 *.db-journal
 dev.db*
 
+# credenciales de Firebase (¡NUNCA subir!)
+serviceAccount*.json
+*firebase-adminsdk*.json
+google-credentials*.json
+
 # sistema
 .DS_Store
 *.log

@@ -5,7 +5,7 @@ análisis de **viabilidad en %** de una marca ante la **SIC**, guía/checklist d
 de registro y generación de **informe PDF** para el cliente. Con **login seguro del lado
 servidor**, **roles y permisos**, y **datos compartidos** entre todo el equipo.
 
-Stack: **Next.js 15 + React 19 + TypeScript** · Base de datos **libSQL/Turso** · Deploy en **Vercel**.
+Stack: **Next.js 15 + React 19 + TypeScript** · Base de datos **Firebase (Firestore)** · Deploy en **Vercel**.
 
 ---
 
@@ -13,14 +13,15 @@ Stack: **Next.js 15 + React 19 + TypeScript** · Base de datos **libSQL/Turso** 
 
 ```bash
 npm install
-cp .env.example .env.local     # ya viene uno listo con BD de archivo
+cp .env.example .env.local     # y completa las variables de Firebase (ver sección 3, Paso 2)
 npm run dev
 ```
 
 Abre **http://localhost:3000** · Acceso inicial: usuario **ADMIN** / contraseña **123456**.
 
-En local, la base de datos es un archivo `dev.db` (se crea sola en el primer arranque,
-junto con el usuario ADMIN y un “Abogado 1”).
+En el primer arranque, si no hay usuarios en Firestore, se crean solos el **ADMIN** y un
+**“Abogado 1”**. En local necesitas la credencial de Firebase en `.env.local` (o el emulador
+de Firestore con `FIRESTORE_EMULATOR_HOST`).
 
 ---
 
@@ -50,27 +51,34 @@ git branch -M main
 git push -u origin main
 ```
 
-> El `.gitignore` ya excluye `.env*.local`, `node_modules`, `dev.db` y `/legacy-static`.
+> El `.gitignore` ya excluye `.env*.local`, `node_modules`, credenciales de Firebase y `/legacy-static`.
 > **Nunca subas secretos a GitHub.**
 
-### Paso 2 — Crear la base de datos (Turso, gratis)
-1. Entra a **https://turso.tech** y crea una cuenta.
-2. Crea una base de datos → copia su **URL** (`libsql://....turso.io`) y genera un **token**.
-   (Con el CLI: `turso db create versus-legal` y `turso db tokens create versus-legal`.)
+### Paso 2 — Configurar Firebase (Firestore)
+1. En **console.firebase.google.com** entra a tu proyecto.
+2. **Build → Firestore Database → Crear base de datos** (modo *production*, elige región).
+3. **⚙ Configuración del proyecto → Cuentas de servicio → Generar nueva clave privada**.
+   Se descarga un archivo JSON. De ese archivo saldrán 3 valores:
+   - `project_id`      → `FIREBASE_PROJECT_ID`
+   - `client_email`    → `FIREBASE_CLIENT_EMAIL`
+   - `private_key`     → `FIREBASE_PRIVATE_KEY` (cópialo completo, con los `\n`)
+
+> ⚠ Ese archivo JSON es un **secreto**: no lo subas a GitHub. Solo se usa para sacar las 3 variables.
 
 ### Paso 3 — Importar el proyecto en Vercel
 1. Entra a **https://vercel.com** → *Add New… → Project* → importa tu repo de GitHub.
 2. En **Environment Variables** agrega:
 
-   | Variable                | Valor                                             |
-   |-------------------------|---------------------------------------------------|
-   | `DATABASE_URL`          | `libsql://....turso.io` (tu URL de Turso)         |
-   | `DATABASE_AUTH_TOKEN`   | (el token de Turso)                               |
+   | Variable                | Valor                                                  |
+   |-------------------------|--------------------------------------------------------|
+   | `FIREBASE_PROJECT_ID`   | el `project_id` del JSON                               |
+   | `FIREBASE_CLIENT_EMAIL` | el `client_email` del JSON                             |
+   | `FIREBASE_PRIVATE_KEY`  | el `private_key` del JSON (completo, entre comillas)   |
    | `AUTH_SECRET`           | una cadena larga aleatoria (`openssl rand -base64 32`) |
-   | `ADMIN_USER`            | `ADMIN`                                            |
-   | `ADMIN_PASSWORD`        | la contraseña inicial del admin                   |
+   | `ADMIN_USER`            | `ADMIN`                                                |
+   | `ADMIN_PASSWORD`        | la contraseña inicial del admin                        |
 
-3. **Deploy**. En el primer acceso se crean las tablas y el usuario ADMIN automáticamente.
+3. **Deploy**. En el primer acceso se crea automáticamente el usuario ADMIN en Firestore.
 
 Cada vez que hagas `git push`, Vercel vuelve a desplegar solo.
 
