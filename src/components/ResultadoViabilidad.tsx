@@ -203,11 +203,11 @@ export default function ResultadoViabilidad({ caso, puedeDescargar, puedeEditar 
             </table>
           </div>
         ) : (
-          <p className="muted">No se hallaron empresas con ese nombre en las cámaras consultadas.</p>
+          <p className="muted">No aparece en los datos abiertos consultados. <b>Esto NO confirma que no exista</b> — la base gratuita es parcial. Verifica en RUES.</p>
         )}
-        <div className="note">
-          Consulta automática sobre datos abiertos oficiales de varias cámaras (cobertura amplia, no total). Para la verificación nacional completa consulta{" "}
-          <a href="https://www.rues.org.co" target="_blank" rel="noopener noreferrer">RUES ↗</a> (Registro Único Empresarial).
+        <div className="note note-warn">
+          ⚠ Búsqueda <b>orientativa</b> sobre datos abiertos <b>parciales</b> (no incluyen todas las cámaras/empresas del país). No reemplaza la verificación oficial: confirma siempre en{" "}
+          <a href="https://www.rues.org.co" target="_blank" rel="noopener noreferrer">RUES ↗</a> (Registro Único Empresarial y Social).
         </div>
       </div>
 
