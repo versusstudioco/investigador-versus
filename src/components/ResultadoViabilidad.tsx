@@ -122,10 +122,13 @@ export default function ResultadoViabilidad({ caso, puedeDescargar, puedeEditar 
       <div className="card">
         <div className="flex-between">
           <div>
-            <h2>Verificación oficial en SIPI (SIC)</h2>
-            <div className="card-desc">Registra los antecedentes que el abogado verificó directamente en SIPI. Entran al informe como dato oficial.</div>
+            <h2>Verificación oficial de marcas (SIPI + OMPI)</h2>
+            <div className="card-desc">Busca la marca en las fuentes oficiales y registra los antecedentes hallados. Entran al informe como dato verificado.</div>
           </div>
-          <a className="btn btn-ghost" href={PROCESO_INFO.portalOficial} target="_blank" rel="noopener noreferrer">Abrir SIPI ↗</a>
+          <div className="row" style={{ alignItems: "center" }}>
+            <a className="btn btn-primary btn-sm" href={`https://branddb.wipo.int/en/similarname?q=${encodeURIComponent(caso.nombre)}`} target="_blank" rel="noopener noreferrer">Buscar en OMPI ↗</a>
+            <a className="btn btn-ghost btn-sm" href={PROCESO_INFO.portalOficial} target="_blank" rel="noopener noreferrer">Abrir SIPI ↗</a>
+          </div>
         </div>
 
         {antecedentes.length > 0 ? (
@@ -178,7 +181,7 @@ export default function ResultadoViabilidad({ caso, puedeDescargar, puedeEditar 
           </div>
         )}
         <div className="note note-warn">
-          SIPI no ofrece API pública; estos antecedentes los <b>verifica y registra el abogado</b> tras consultar en el portal oficial, para dejarlos en el informe con validez.
+          Ninguna fuente ofrece API automática de marcas. <b>OMPI</b> (gratis, incluye Colombia, búsqueda por similitud) y <b>SIPI</b> (oficial de la SIC) se consultan a mano; el abogado <b>registra aquí</b> lo hallado para dejarlo en el informe con validez.
         </div>
       </div>
 

@@ -170,6 +170,7 @@ export default function BuscarClient({ puedeDescargar, puedeEditar = false }: { 
           {error && <div className="login-error">{error}</div>}
           <div className="row">
             <button className="btn btn-primary" disabled={loading}>{loading ? "Analizando…" : "Analizar viabilidad"}</button>
+            <a className="btn btn-ghost" href={nombre.trim() ? `https://branddb.wipo.int/en/similarname?q=${encodeURIComponent(nombre)}` : "https://branddb.wipo.int"} target="_blank" rel="noopener noreferrer">Buscar en OMPI ↗</a>
             <a className="btn btn-ghost" href={PROCESO_INFO.portalOficial} target="_blank" rel="noopener noreferrer">Verificar en SIPI ↗</a>
           </div>
         </form>
