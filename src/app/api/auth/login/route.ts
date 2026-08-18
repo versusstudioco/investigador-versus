@@ -10,25 +10,20 @@ export async function POST(req: Request) {
   if (!usuario || !password) {
     return NextResponse.json({ error: "Datos incompletos" }, { status: 400 });
   }
-  const row = await getUsuarioByLogin(usuario);
-  if (!row || !Number(row.activo)) {
+  const u = await getUsuarioByLogin(usuario);
+  if (!u || !u.activo) {
     return NextResponse.json({ error: "Usuario o contraseña incorrectos." }, { status: 401 });
   }
-  const ok = await verifyPassword(password, String(row.hash), String(row.salt));
+  const ok = await verifyPassword(password, u.hash, u.salt);
   if (!ok) {
     return NextResponse.json({ error: "Usuario o contraseña incorrectos." }, { status: 401 });
   }
   const user: SessionUser = {
-    id: String(row.id),
-    usuario: String(row.usuario),
-    nombre: String(row.nombre),
-    rol: String(row.rol),
-    permisos: {
-      buscar: !!Number(row.perm_buscar),
-      revisar: !!Number(row.perm_revisar),
-      descargar: !!Number(row.perm_descargar),
-      admin: !!Number(row.perm_admin),
-    },
+    id: u.id,
+    usuario: u.usuario,
+    nombre: u.nombre,
+    rol: u.rol,
+    permisos: u.permisos,
   };
   await createSession(user);
   return NextResponse.json({ ok: true, user });

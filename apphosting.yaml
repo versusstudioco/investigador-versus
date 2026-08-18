@@ -1,0 +1,26 @@
+# Configuración de Firebase App Hosting
+# Docs: https://firebase.google.com/docs/app-hosting/configure
+
+runConfig:
+  minInstances: 0
+  maxInstances: 2
+
+env:
+  # Usuario administrador inicial (no es secreto)
+  - variable: ADMIN_USER
+    value: "ADMIN"
+    availability:
+      - RUNTIME
+
+  # Secretos: se guardan en Google Secret Manager (no en el repo).
+  # Créalos con:
+  #   firebase apphosting:secrets:set AUTH_SECRET
+  #   firebase apphosting:secrets:set ADMIN_PASSWORD
+  - variable: AUTH_SECRET
+    secret: AUTH_SECRET
+    availability:
+      - RUNTIME
+  - variable: ADMIN_PASSWORD
+    secret: ADMIN_PASSWORD
+    availability:
+      - RUNTIME

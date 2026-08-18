@@ -1,90 +1,79 @@
-import { createClient, type Client } from "@libsql/client";
+import { initializeApp, getApps, cert } from "firebase-admin/app";
+import { getFirestore, type Firestore } from "firebase-admin/firestore";
 import { hashPassword } from "./auth";
 
 /* ============================================================
-   Cliente libSQL (Turso).
-   - Local:      DATABASE_URL="file:./dev.db"
-   - Producción: DATABASE_URL="libsql://...."  + DATABASE_AUTH_TOKEN
-   La migración y la siembra del admin se ejecutan una sola vez
-   de forma perezosa (idempotente).
+   Firebase Firestore (Admin SDK).
+   Credenciales por variables de entorno (en Vercel):
+     - FIREBASE_PROJECT_ID
+     - FIREBASE_CLIENT_EMAIL
+     - FIREBASE_PRIVATE_KEY   (con saltos de línea escapados \n)
+   En local puede usarse el emulador: FIRESTORE_EMULATOR_HOST=localhost:8080
+   La siembra del admin se ejecuta una sola vez (idempotente).
    ============================================================ */
 
-let _client: Client | null = null;
+let _db: Firestore | null = null;
 let _ready: Promise<void> | null = null;
 
-function rawClient(): Client {
-  if (_client) return _client;
-  const url = process.env.DATABASE_URL || "file:./dev.db";
-  const authToken = process.env.DATABASE_AUTH_TOKEN || undefined;
-  _client = createClient({ url, authToken });
-  return _client;
-}
+function initDb(): Firestore {
+  if (_db) return _db;
+  if (!getApps().length) {
+    const projectId = process.env.FIREBASE_PROJECT_ID;
+    const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
+    const privateKey = process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, "\n");
 
-async function migrateAndSeed(client: Client): Promise<void> {
-  await client.batch(
-    [
-      `CREATE TABLE IF NOT EXISTS users (
-        id TEXT PRIMARY KEY,
-        usuario TEXT UNIQUE NOT NULL,
-        nombre TEXT NOT NULL,
-        rol TEXT NOT NULL,
-        hash TEXT NOT NULL,
-        salt TEXT NOT NULL,
-        perm_buscar INTEGER NOT NULL DEFAULT 1,
-        perm_revisar INTEGER NOT NULL DEFAULT 1,
-        perm_descargar INTEGER NOT NULL DEFAULT 1,
-        perm_admin INTEGER NOT NULL DEFAULT 0,
-        activo INTEGER NOT NULL DEFAULT 1,
-        creado_en TEXT NOT NULL
-      )`,
-      `CREATE TABLE IF NOT EXISTS casos (
-        id TEXT PRIMARY KEY,
-        nombre TEXT NOT NULL,
-        tipo TEXT NOT NULL,
-        titular TEXT,
-        clases TEXT NOT NULL,
-        descripcion TEXT,
-        score INTEGER NOT NULL,
-        nivel TEXT NOT NULL,
-        color TEXT NOT NULL,
-        analisis TEXT NOT NULL,
-        checklist TEXT NOT NULL DEFAULT '{}',
-        autor TEXT,
-        autor_id TEXT,
-        creado_en TEXT NOT NULL
-      )`,
-    ],
-    "write"
-  );
-
-  // Sembrar administrador si no hay usuarios
-  const count = await client.execute("SELECT COUNT(*) AS n FROM users");
-  const n = Number(count.rows[0]?.n ?? 0);
-  if (n === 0) {
-    const adminUser = process.env.ADMIN_USER || "ADMIN";
-    const adminPass = process.env.ADMIN_PASSWORD || "123456";
-    const { hash, salt } = await hashPassword(adminPass);
-    const now = new Date().toISOString();
-    await client.execute({
-      sql: `INSERT INTO users
-        (id, usuario, nombre, rol, hash, salt, perm_buscar, perm_revisar, perm_descargar, perm_admin, activo, creado_en)
-        VALUES (?, ?, ?, ?, ?, ?, 1, 1, 1, 1, 1, ?)`,
-      args: [crypto.randomUUID(), adminUser, "Administrador Versus Legal", "Administrador", hash, salt, now],
-    });
-    // Abogado de ejemplo
-    const { hash: h2, salt: s2 } = await hashPassword("abogado1");
-    await client.execute({
-      sql: `INSERT INTO users
-        (id, usuario, nombre, rol, hash, salt, perm_buscar, perm_revisar, perm_descargar, perm_admin, activo, creado_en)
-        VALUES (?, ?, ?, ?, ?, ?, 1, 1, 1, 0, 1, ?)`,
-      args: [crypto.randomUUID(), "Abogado 1", "Abogado 1", "Abogado", h2, s2, now],
-    });
+    if (projectId && clientEmail && privateKey) {
+      // Con clave de cuenta de servicio (ej. Vercel u otro host fuera de Google)
+      initializeApp({ credential: cert({ projectId, clientEmail, privateKey }) });
+    } else if (process.env.FIRESTORE_EMULATOR_HOST) {
+      initializeApp({ projectId: projectId || "demo-versus-legal" });
+    } else {
+      // Firebase App Hosting / Google Cloud: credenciales automáticas (ADC), sin clave
+      initializeApp();
+    }
   }
+  _db = getFirestore();
+  return _db;
 }
 
-export async function getDb(): Promise<Client> {
-  const client = rawClient();
-  if (!_ready) _ready = migrateAndSeed(client);
+async function ensureSeed(db: Firestore): Promise<void> {
+  const snap = await db.collection("users").limit(1).get();
+  if (!snap.empty) return;
+
+  const now = new Date().toISOString();
+  const adminUser = process.env.ADMIN_USER || "ADMIN";
+  const adminPass = process.env.ADMIN_PASSWORD || "123456";
+
+  const a = await hashPassword(adminPass);
+  await db.collection("users").doc(crypto.randomUUID()).set({
+    usuario: adminUser,
+    usuario_lower: adminUser.toLowerCase(),
+    nombre: "Administrador Versus Legal",
+    rol: "Administrador",
+    hash: a.hash,
+    salt: a.salt,
+    permisos: { buscar: true, revisar: true, descargar: true, admin: true },
+    activo: true,
+    creado_en: now,
+  });
+
+  const b = await hashPassword("abogado1");
+  await db.collection("users").doc(crypto.randomUUID()).set({
+    usuario: "Abogado 1",
+    usuario_lower: "abogado 1",
+    nombre: "Abogado 1",
+    rol: "Abogado",
+    hash: b.hash,
+    salt: b.salt,
+    permisos: { buscar: true, revisar: true, descargar: true, admin: false },
+    activo: true,
+    creado_en: now,
+  });
+}
+
+export async function getDb(): Promise<Firestore> {
+  const db = initDb();
+  if (!_ready) _ready = ensureSeed(db);
   await _ready;
-  return client;
+  return db;
 }
