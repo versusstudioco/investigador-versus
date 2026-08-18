@@ -182,6 +182,26 @@ export function sugerirClasesDesc(descripcion: string): { c: number; titulo: str
   return out.slice(0, 8).map(({ c, titulo, motivo }) => ({ c, titulo, motivo }));
 }
 
+/* Filtro por producto/servicio específico → clase (sub-clases).
+   Busca en el diccionario de términos y en los títulos de las clases. */
+export function buscarClasesPorTermino(q: string): { c: number; titulo: string; termino: string }[] {
+  const nq = q.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").trim();
+  if (nq.length < 2) return [];
+  const res: { c: number; titulo: string; termino: string }[] = [];
+  const seen = new Set<number>();
+  // 1) términos específicos del diccionario
+  for (const { c, kw } of KEYWORDS_CLASE) {
+    const hit = kw.find((k) => k.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").includes(nq));
+    if (hit && !seen.has(c)) { res.push({ c, titulo: claseTitulo(c), termino: hit }); seen.add(c); }
+  }
+  // 2) coincidencia en el título de la clase
+  for (const n of NICE_CLASSES) {
+    const t = n.t.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+    if (t.includes(nq) && !seen.has(n.c)) { res.push({ c: n.c, titulo: n.t, termino: n.t }); seen.add(n.c); }
+  }
+  return res.slice(0, 10);
+}
+
 export const PALABRAS_DEBILES = [
   "premium", "original", "natural", "express", "digital", "global", "colombia", "nacional",
   "super", "mega", "pro", "plus", "gold", "oro", "el", "la", "los", "las", "de", "del", "y",

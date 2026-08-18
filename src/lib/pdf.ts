@@ -117,6 +117,24 @@ export async function generarPDF(c: CasoRow): Promise<void> {
   y = (doc.lastAutoTable?.finalY ?? y) + 18;
   const cop = (n: number) => new Intl.NumberFormat("es-CO", { style: "currency", currency: "COP", maximumFractionDigits: 0 }).format(n);
 
+  /* Empresas en Cámara de Comercio */
+  if (a.empresasRUES && a.empresasRUES.length) {
+    if (y > 640) { doc.addPage(); y = 60; }
+    doc.setFont("helvetica", "bold"); doc.setFontSize(12); doc.setTextColor(...oscuro);
+    doc.text("Coincidencias en Cámara de Comercio", M, y); y += 6;
+    autoTable(doc, {
+      startY: y, margin: { left: M, right: M },
+      head: [["Razón social", "NIT", "Municipio", "Actividad"]],
+      body: a.empresasRUES.map((e) => [e.razon_social, e.nit, e.municipio, e.actividad]),
+      styles: { font: "helvetica", fontSize: 8, cellPadding: 4 },
+      headStyles: { fillColor: oscuro, textColor: 255 },
+      alternateRowStyles: { fillColor: [248, 251, 255] },
+      columnStyles: { 3: { cellWidth: 150 } },
+    });
+    // @ts-expect-error lastAutoTable inyectado por el plugin
+    y = doc.lastAutoTable.finalY + 18;
+  }
+
   /* Clases sugeridas */
   if (a.clasesSugeridas && a.clasesSugeridas.length) {
     if (y > 640) { doc.addPage(); y = 60; }
@@ -140,8 +158,11 @@ export async function generarPDF(c: CasoRow): Promise<void> {
     doc.setFont("helvetica", "bold"); doc.setFontSize(12); doc.setTextColor(...oscuro);
     doc.text("Cotización estimada para el cliente", M, y); y += 6;
     const cz = a.cotizacion;
+    doc.setFont("helvetica", "normal"); doc.setFontSize(8.5); doc.setTextColor(...gris);
+    const incl = doc.splitTextToSize("Incluye: búsqueda de antecedentes, análisis de similitud y viabilidad, clasificación de Niza, revisión en Cámara de Comercio y radicación ante la SIC.", W - 2 * M);
+    doc.text(incl, M, y + 10); y += incl.length * 11 + 8;
     const body: string[][] = [
-      [`Honorarios profesionales (complejidad ${cz.complejidad})`, cop(cz.honorarios)],
+      ["Estudio, análisis de viabilidad y gestión del registro", cop(cz.honorarios)],
       [`Tasa oficial SIC — 1a clase ${cz.mipyme ? "(MiPyme)" : ""}`, cop(cz.tasaPrimera)],
     ];
     if (cz.numClases > 1) body.push([`Clases adicionales: ${cz.numClases - 1} x ${cop(cz.tasaAdicional)}`, cop(cz.tasaAdicional * (cz.numClases - 1))]);

@@ -1,5 +1,6 @@
 import { PALABRAS_DEBILES, PRECIOS, KEYWORDS_CLASE, claseTitulo, matchKeyword } from "./nice";
 import { EXAMPLE_REGISTRY, type RegistroMarca } from "./registry";
+import type { EmpresaRUES } from "./rues";
 
 export type Coincidencia = RegistroMarca & { sim: number; mismaClase: boolean };
 export type Factor = { n: string; v: number };
@@ -23,6 +24,7 @@ export type Analisis = {
   coincidencias: Coincidencia[];
   clasesSugeridas: ClaseSugerida[];
   cotizacion: Cotizacion;
+  empresasRUES?: EmpresaRUES[];
 };
 
 /* Sugiere clases de Niza a partir de la descripción de productos/servicios */
@@ -122,20 +124,20 @@ export function analizarViabilidad(
 
   let nivel: string, color: string, recomendacion: string;
   if (score >= 70) {
-    nivel = "VIABLE — Baja complejidad";
+    nivel = "VIABILIDAD ALTA";
     color = "#12924b";
     recomendacion =
-      "El signo presenta buena disponibilidad y distintividad. Se recomienda proceder con la radicación, confirmando previamente los antecedentes en SIPI.";
+      "La marca presenta buena disponibilidad y distintividad. Se recomienda proceder con la radicación, confirmando previamente los antecedentes en SIPI.";
   } else if (score >= 45) {
-    nivel = "VIABILIDAD MEDIA — Complejidad moderada";
+    nivel = "VIABILIDAD MEDIA";
     color = "#d98200";
     recomendacion =
-      "Existen coincidencias o debilidades que aumentan el riesgo. Se sugiere ajustar el signo (agregar elemento distintivo), acotar la descripción de productos/servicios, o evaluar registro como marca mixta.";
+      "Existen coincidencias o elementos que aumentan el riesgo. Se sugiere ajustar el signo (agregar un elemento distintivo), acotar la descripción de productos/servicios, o evaluar el registro como marca mixta.";
   } else {
-    nivel = "ALTO RIESGO — Complejidad alta";
+    nivel = "VIABILIDAD BAJA";
     color = "#F90000";
     recomendacion =
-      "Se detectan marcas idénticas o muy similares en la(s) clase(s) solicitada(s). Registrar tal cual implica alto riesgo de negación u oposición. Se recomienda replantear el signo o la estrategia de clases.";
+      "Se detectan marcas idénticas o muy similares en la(s) clase(s) consultada(s). Registrar la marca tal cual implica un riesgo alto de negación u oposición. Se recomienda replantear el signo o la estrategia de clases.";
   }
 
   /* Complejidad → honorarios */

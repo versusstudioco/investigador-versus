@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getCurrentUser, requirePermission, AuthError } from "@/lib/auth";
 import { listCasos, createCaso } from "@/lib/models";
 import { analizarViabilidad } from "@/lib/viability";
+import { buscarEmpresasRUES } from "@/lib/rues";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -29,6 +30,7 @@ export async function POST(req: Request) {
     const descripcion = String(body.descripcion || "").trim();
     const mipyme = !!body.mipyme;
     const analisis = analizarViabilidad(nombre, clases, { descripcion, mipyme });
+    analisis.empresasRUES = await buscarEmpresasRUES(nombre);
     const caso = await createCaso({
       nombre,
       tipo: String(body.tipo || "Nominativa"),

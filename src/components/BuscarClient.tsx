@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { NICE_CLASSES, PROCESO_INFO, claseTitulo, sugerirClasesDesc } from "@/lib/nice";
+import { NICE_CLASSES, PROCESO_INFO, claseTitulo, sugerirClasesDesc, buscarClasesPorTermino } from "@/lib/nice";
 import type { CasoRow } from "@/lib/models";
 import ResultadoViabilidad from "./ResultadoViabilidad";
 
@@ -13,6 +13,8 @@ export default function BuscarClient({ puedeDescargar }: { puedeDescargar: boole
   const [clases, setClases] = useState<number[]>([]);
   const [mipyme, setMipyme] = useState(false);
   const [manual, setManual] = useState("");
+  const [filtro, setFiltro] = useState("");
+  const resultadosFiltro = useMemo(() => buscarClasesPorTermino(filtro), [filtro]);
   const [caso, setCaso] = useState<CasoRow | null>(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -107,9 +109,30 @@ export default function BuscarClient({ puedeDescargar }: { puedeDescargar: boole
             )}
           </div>
 
-          {/* Agregar clase manual (opcional) */}
+          {/* Filtro: buscar la clase por producto/servicio específico */}
           <div className="field">
-            <label>¿Falta alguna? Agrégala manualmente (opcional)</label>
+            <label>🔎 ¿No sabes la clase? Busca por producto o servicio específico</label>
+            <input value={filtro} onChange={(e) => setFiltro(e.target.value)} placeholder="Ej: zapatos, restaurante, software, joyas, cerveza…" />
+            {filtro.trim().length >= 2 && (
+              resultadosFiltro.length > 0 ? (
+                <div className="sugerencias" style={{ marginTop: 10 }}>
+                  {resultadosFiltro.map((r) => {
+                    const on = clases.includes(r.c);
+                    return (
+                      <button type="button" key={r.c} onClick={() => toggleClase(r.c)} className={`sug-item ${on ? "on" : ""}`}>
+                        <span className="sug-check">{on ? "✓" : "+"}</span>
+                        <span><b>Clase {r.c}</b> — {r.titulo}<span className="sug-motivo">término: {r.termino}</span></span>
+                      </button>
+                    );
+                  })}
+                </div>
+              ) : <p className="muted" style={{ marginTop: 8 }}>Sin coincidencias. Prueba otra palabra o usa la lista completa abajo.</p>
+            )}
+          </div>
+
+          {/* Lista completa (opcional) */}
+          <div className="field">
+            <label>O elige de la lista completa (opcional)</label>
             <div className="row" style={{ alignItems: "center" }}>
               <select value={manual} onChange={(e) => setManual(e.target.value)} style={{ maxWidth: 520 }}>
                 <option value="">Elegir una clase…</option>
