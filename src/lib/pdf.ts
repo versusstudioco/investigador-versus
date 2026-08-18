@@ -102,8 +102,8 @@ export async function generarPDF(c: CasoRow): Promise<void> {
   if (a.coincidencias.length) {
     autoTable(doc, {
       startY: y, margin: { left: M, right: M },
-      head: [["Marca", "Clase", "Similitud", "Estado", "Titular", "Expediente"]],
-      body: a.coincidencias.map((m) => [m.marca, String(m.clase), `${m.sim}%`, m.estado, m.titular, m.expediente]),
+      head: [["Marca", "Clase", "Similitud", "Tipo", "Estado", "Titular", "Expediente"]],
+      body: a.coincidencias.map((m) => [m.marca, String(m.clase), `${m.sim}%`, m.tipo, m.estado, m.titular, m.expediente]),
       styles: { font: "helvetica", fontSize: 8.5, cellPadding: 4 },
       headStyles: { fillColor: rojo, textColor: 255 },
       alternateRowStyles: { fillColor: [255, 245, 245] },

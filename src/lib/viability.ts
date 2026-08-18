@@ -2,7 +2,7 @@ import { PALABRAS_DEBILES, PRECIOS, KEYWORDS_CLASE, claseTitulo, matchKeyword } 
 import { EXAMPLE_REGISTRY, type RegistroMarca } from "./registry";
 import type { EmpresaRUES } from "./rues";
 
-export type Coincidencia = RegistroMarca & { sim: number; mismaClase: boolean };
+export type Coincidencia = RegistroMarca & { sim: number; mismaClase: boolean; tipo: string };
 export type Factor = { n: string; v: number };
 export type ClaseSugerida = { c: number; titulo: string; motivo: string; yaRegistrada: boolean; seleccionada: boolean };
 export type Cotizacion = {
@@ -57,6 +57,27 @@ export function norm(s = ""): string {
     .trim();
 }
 
+/* Clave fonética para español: aproxima cómo "suena" una palabra.
+   Detecta marcas que suenan igual aunque se escriban distinto. */
+export function claveFonetica(s: string): string {
+  let x = norm(s).replace(/[^a-z0-9\s]/g, "");
+  x = x
+    .replace(/qu/g, "k")
+    .replace(/gue/g, "ge").replace(/gui/g, "gi")
+    .replace(/ce/g, "se").replace(/ci/g, "si")
+    .replace(/z/g, "s")
+    .replace(/c/g, "k")
+    .replace(/q/g, "k")
+    .replace(/v/g, "b")
+    .replace(/ll/g, "y")
+    .replace(/h/g, "")
+    .replace(/x/g, "ks")
+    .replace(/w/g, "u")
+    .replace(/\s+/g, "")
+    .replace(/(.)\1+/g, "$1");
+  return x;
+}
+
 /* Similitud por distancia de Levenshtein (0..1) */
 export function similitud(a: string, b: string): number {
   a = norm(a);
@@ -90,11 +111,17 @@ export function analizarViabilidad(
     similarMismaClase = 0,
     identicaOtraClase = false;
 
+  const fonNombre = claveFonetica(nombre);
   registro.forEach((r) => {
-    const sim = similitud(nombre, r.marca);
+    const simO = similitud(nombre, r.marca);
+    const simF = similitud(fonNombre, claveFonetica(r.marca));
+    const sim = Math.max(simO, simF);
     const mismaClase = clases.includes(Number(r.clase));
     if (sim >= 0.55) {
-      coincidencias.push({ ...r, sim: Math.round(sim * 100), mismaClase });
+      let tipo = "Ortográfica";
+      if (simO >= 0.92 || simF >= 0.97) tipo = "Idéntica";
+      else if (simF > simO) tipo = "Fonética";
+      coincidencias.push({ ...r, sim: Math.round(sim * 100), mismaClase, tipo });
       if (sim >= 0.92 && mismaClase) identicaMismaClase = true;
       else if (sim >= 0.92) identicaOtraClase = true;
       else if (sim >= 0.7 && mismaClase) similarMismaClase++;

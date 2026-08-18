@@ -132,13 +132,14 @@ export default function ResultadoViabilidad({ caso, puedeDescargar, puedeEditar 
         {a.coincidencias.length ? (
           <div style={{ overflowX: "auto" }}>
             <table>
-              <thead><tr><th>Marca hallada</th><th>Clase</th><th>Similitud</th><th>Estado</th><th>Titular</th><th>Expediente</th></tr></thead>
+              <thead><tr><th>Marca hallada</th><th>Clase</th><th>Similitud</th><th>Tipo</th><th>Estado</th><th>Titular</th><th>Expediente</th></tr></thead>
               <tbody>
                 {a.coincidencias.map((m, i) => (
                   <tr key={i}>
                     <td><b>{m.marca}</b> {m.mismaClase && <span className="badge badge-red">misma clase</span>}</td>
                     <td>{m.clase}</td>
                     <td><b>{m.sim}%</b></td>
+                    <td><span className={`badge ${m.tipo === "Idéntica" ? "badge-red" : m.tipo === "Fonética" ? "badge-tram" : "badge-blue"}`}>{m.tipo}</span></td>
                     <td>{badgeEstado(m.estado)}</td>
                     <td className="muted">{m.titular}</td>
                     <td className="muted">{m.expediente}</td>
