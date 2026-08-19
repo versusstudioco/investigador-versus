@@ -5,7 +5,7 @@ import { SignJWT, jwtVerify } from "jose";
 
 const scrypt = promisify(_scrypt);
 const COOKIE = "vl_session";
-const MAX_AGE = 60 * 60 * 8; // 8 horas
+const MAX_AGE = 60 * 60 * 24 * 7; // 7 días
 
 export type Permisos = {
   buscar: boolean;

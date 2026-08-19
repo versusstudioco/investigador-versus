@@ -167,6 +167,17 @@ export default function BuscarClient({ puedeDescargar, puedeEditar = false }: { 
             </label>
           </div>
 
+          <div className="note" style={{ marginTop: 4 }}>
+            <b>📋 Cómo consultar en la SIC (SIPI) y en OMPI — paso a paso</b>
+            <ol style={{ margin: "8px 0 0 18px", padding: 0, fontSize: 13, lineHeight: 1.7 }}>
+              <li>Escribe la marca y su descripción, y dale <b>“Analizar viabilidad”</b> (te da el % y las clases).</li>
+              <li><b>OMPI</b> (recomendado, gratis, incluye Colombia): abre <b>“Buscar en OMPI”</b>, filtra por país <b>Colombia (CO)</b> y revisa marcas iguales y <b>similares</b>.</li>
+              <li><b>SIPI de la SIC</b>: abre <b>“Verificar en SIPI”</b> → módulo <b>Signos Distintivos → Buscar</b> → busca en tu(s) clase(s).</li>
+              <li>De cada marca parecida anota: <b>nombre, clase, estado, expediente y titular</b>.</li>
+              <li>En el resultado, sección <b>“Verificación oficial de marcas”</b>, regístralas → quedan en el informe/PDF. ✅</li>
+            </ol>
+          </div>
+
           {error && <div className="login-error">{error}</div>}
           <div className="row">
             <button className="btn btn-primary" disabled={loading}>{loading ? "Analizando…" : "Analizar viabilidad"}</button>
