@@ -32,7 +32,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 
 export async function DELETE(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
-    await requirePermission("admin");
+    await requirePermission("revisar");
     const { id } = await params;
     await deleteCaso(id);
     return NextResponse.json({ ok: true });

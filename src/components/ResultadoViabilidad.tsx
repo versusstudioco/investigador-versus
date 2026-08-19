@@ -169,6 +169,17 @@ export default function ResultadoViabilidad({ caso, puedeDescargar, puedeEditar 
           </div>
         </div>
 
+        <div className="note" style={{ marginTop: 0, marginBottom: 14 }}>
+          <b>📋 Instructivo: cómo buscar y qué traer</b>
+          <ol style={{ margin: "8px 0 0 18px", padding: 0, fontSize: 13, lineHeight: 1.7 }}>
+            <li>Abre <b>OMPI</b> (recomendado: gratis, sin login, incluye Colombia y busca por similitud) o <b>SIPI</b> con los botones de arriba.</li>
+            <li>En <b>OMPI</b>: filtra por país <b>Colombia (CO)</b> y busca por el nombre; usa la pestaña de <b>marcas similares</b> para las que se parecen.</li>
+            <li>En <b>SIPI</b>: entra a <b>Signos Distintivos → Buscar</b> y revisa marcas iguales y parecidas en tu(s) clase(s).</li>
+            <li>De cada marca igual o parecida, anota: <b>nombre, clase, estado</b> (registrada / en trámite / negada), <b>expediente</b> y <b>titular</b>.</li>
+            <li>Regístrala abajo con <b>“Agregar antecedente verificado”</b>. Con eso el estudio queda completo y sale en el informe/PDF. ✅</li>
+          </ol>
+        </div>
+
         {antecedentes.length > 0 ? (
           <div style={{ overflowX: "auto" }}>
             <table>

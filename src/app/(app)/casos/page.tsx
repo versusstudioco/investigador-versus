@@ -14,7 +14,7 @@ export default async function CasosPage() {
         <p>Historial de estudios de viabilidad del estudio.</p>
       </div>
       <div className="card">
-        <CasosList casosIniciales={casos} puedeDescargar={user.permisos.descargar} puedeEliminar={user.permisos.admin} puedeEditar={user.permisos.revisar} />
+        <CasosList casosIniciales={casos} puedeDescargar={user.permisos.descargar} puedeEliminar={user.permisos.revisar} puedeEditar={user.permisos.revisar} />
       </div>
     </>
   );

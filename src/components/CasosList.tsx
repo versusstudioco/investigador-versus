@@ -64,7 +64,7 @@ export default function CasosList({
               <td style={{ whiteSpace: "nowrap" }}>
                 <Link className="btn btn-outline btn-sm" href={`/casos/${c.id}`}>Ver</Link>{" "}
                 {puedeDescargar && <button className="btn btn-ghost btn-sm" onClick={() => generarPDF(c)}>PDF</button>}{" "}
-                {puedeEliminar && <button className="btn btn-danger btn-sm" disabled={busy === c.id} onClick={() => eliminar(c.id)}>✕</button>}
+                {puedeEliminar && <button className="btn btn-danger btn-sm" disabled={busy === c.id} onClick={() => eliminar(c.id)}>{busy === c.id ? "…" : "Eliminar"}</button>}
               </td>
             </tr>
           ))}
