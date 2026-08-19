@@ -146,6 +146,7 @@ export type CasoRow = {
   checklist: Record<string, boolean>;
   antecedentesSIPI: AntecedenteSIPI[];
   requerimientos: Requerimiento[];
+  estado: string;
   autor: string;
   autorId: string;
   fecha: string;
@@ -161,6 +162,7 @@ type CasoDoc = {
   checklist: Record<string, boolean>;
   antecedentes_sipi?: AntecedenteSIPI[];
   requerimientos?: Requerimiento[];
+  estado?: string;
   autor: string;
   autor_id: string;
   creado_en: string;
@@ -178,6 +180,7 @@ function mapCaso(id: string, c: CasoDoc): CasoRow {
     checklist: c.checklist ?? {},
     antecedentesSIPI: c.antecedentes_sipi ?? [],
     requerimientos: c.requerimientos ?? [],
+    estado: c.estado ?? "Estudio",
     autor: c.autor ?? "",
     autorId: c.autor_id ?? "",
     fecha: c.creado_en,
@@ -220,6 +223,7 @@ export async function createCaso(c: CasoInput): Promise<CasoRow> {
     checklist: {},
     antecedentes_sipi: [],
     requerimientos: [],
+    estado: "Estudio",
     autor: c.autor,
     autor_id: c.autorId,
     creado_en: new Date().toISOString(),
@@ -241,6 +245,11 @@ export async function updateAntecedentesSIPI(id: string, antecedentes: Anteceden
 export async function updateRequerimientos(id: string, requerimientos: Requerimiento[]): Promise<void> {
   const db = await getDb();
   await db.collection("casos").doc(id).update({ requerimientos });
+}
+
+export async function updateEstado(id: string, estado: string): Promise<void> {
+  const db = await getDb();
+  await db.collection("casos").doc(id).update({ estado });
 }
 
 export async function deleteCaso(id: string): Promise<void> {

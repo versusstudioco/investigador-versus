@@ -12,6 +12,20 @@ export default async function PanelPage() {
   const viables = casos.filter((c) => c.analisis.score >= 70).length;
   const riesgo = casos.filter((c) => c.analisis.score < 45).length;
 
+  // Próximos vencimientos (requerimientos pendientes con fecha límite)
+  const hoy = new Date();
+  hoy.setHours(0, 0, 0, 0);
+  const vencimientos = casos
+    .flatMap((c) =>
+      (c.requerimientos || [])
+        .filter((r) => r.estado !== "Respondido" && r.fechaLimite)
+        .map((r) => {
+          const dias = Math.round((new Date(r.fechaLimite + "T00:00:00").getTime() - hoy.getTime()) / 86400000);
+          return { casoId: c.id, marca: c.nombre, tipo: r.tipo, fechaLimite: r.fechaLimite, dias };
+        })
+    )
+    .sort((a, b) => a.dias - b.dias);
+
   return (
     <>
       <div className="page-head">
@@ -37,6 +51,31 @@ export default async function PanelPage() {
           <span className="chip">Portal oficial: <a href={PROCESO_INFO.portalOficial} target="_blank" rel="noopener noreferrer">SIPI ↗</a></span>
         </div>
       </div>
+
+      {vencimientos.length > 0 && (
+        <div className="card">
+          <h2>⏰ Próximos vencimientos</h2>
+          <div className="card-desc">Requerimientos pendientes con plazo para responder. Ordenados por urgencia.</div>
+          <div style={{ overflowX: "auto" }}>
+            <table>
+              <thead><tr><th>Marca</th><th>Requerimiento</th><th>Fecha límite</th><th>Plazo</th><th></th></tr></thead>
+              <tbody>
+                {vencimientos.slice(0, 8).map((v, i) => (
+                  <tr key={i}>
+                    <td><b>{v.marca}</b></td>
+                    <td className="muted">{v.tipo}</td>
+                    <td className="muted">{v.fechaLimite}</td>
+                    <td>{v.dias < 0
+                      ? <span className="badge badge-red">Vencido hace {Math.abs(v.dias)} d</span>
+                      : <span className={`badge ${v.dias <= 5 ? "badge-red" : v.dias <= 15 ? "badge-tram" : "badge-blue"}`}>{v.dias} día(s)</span>}</td>
+                    <td><Link className="btn btn-outline btn-sm" href={`/casos/${v.casoId}`}>Ver</Link></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
       <div className="card">
         <h2>Últimos casos</h2>

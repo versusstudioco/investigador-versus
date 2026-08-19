@@ -110,6 +110,19 @@ export const CHECKLIST: CheckPhase[] = [
   },
 ];
 
+/* Estados del expediente (pipeline del caso) */
+export const ESTADOS_CASO = [
+  "Estudio",
+  "Radicado",
+  "Publicado en Gaceta",
+  "En oposición",
+  "Examen de fondo",
+  "Concedido",
+  "Negado",
+  "Renovación",
+  "Archivado",
+];
+
 export const PROCESO_INFO = {
   duracion: "6 a 8 meses aprox. (si no hay oposiciones ni requerimientos).",
   vigencia: "10 años, renovables indefinidamente por periodos iguales.",

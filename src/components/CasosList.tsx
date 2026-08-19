@@ -4,18 +4,29 @@ import { useState } from "react";
 import Link from "next/link";
 import type { CasoRow } from "@/lib/models";
 import { generarPDF } from "@/lib/pdf";
+import { ESTADOS_CASO } from "@/lib/nice";
 
 export default function CasosList({
   casosIniciales,
   puedeDescargar,
   puedeEliminar,
+  puedeEditar,
 }: {
   casosIniciales: CasoRow[];
   puedeDescargar: boolean;
   puedeEliminar: boolean;
+  puedeEditar?: boolean;
 }) {
   const [casos, setCasos] = useState(casosIniciales);
   const [busy, setBusy] = useState<string | null>(null);
+
+  async function cambiarEstado(id: string, estado: string) {
+    setCasos((cs) => cs.map((c) => (c.id === id ? { ...c, estado } : c)));
+    await fetch(`/api/casos/${id}`, {
+      method: "PATCH", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ estado }),
+    }).catch(() => {});
+  }
 
   async function eliminar(id: string) {
     if (!confirm("¿Eliminar este caso?")) return;
@@ -32,7 +43,7 @@ export default function CasosList({
     <div style={{ overflowX: "auto" }}>
       <table>
         <thead>
-          <tr><th>Marca</th><th>Titular</th><th>Clases</th><th>Viabilidad</th><th>Autor</th><th>Fecha</th><th></th></tr>
+          <tr><th>Marca</th><th>Titular</th><th>Clases</th><th>Viabilidad</th><th>Estado</th><th>Autor</th><th>Fecha</th><th></th></tr>
         </thead>
         <tbody>
           {casos.map((c) => (
@@ -41,6 +52,13 @@ export default function CasosList({
               <td className="muted">{c.titular}</td>
               <td>{c.clases.join(", ")}</td>
               <td><b style={{ color: c.analisis.color }}>{c.analisis.score}%</b></td>
+              <td>
+                {puedeEditar ? (
+                  <select value={c.estado || "Estudio"} onChange={(e) => cambiarEstado(c.id, e.target.value)} style={{ padding: "6px 8px", fontSize: 12, borderRadius: 8, maxWidth: 160 }}>
+                    {ESTADOS_CASO.map((s) => <option key={s} value={s}>{s}</option>)}
+                  </select>
+                ) : <span className="badge badge-blue">{c.estado || "Estudio"}</span>}
+              </td>
               <td className="muted">{c.autor || "—"}</td>
               <td className="muted">{new Date(c.fecha).toLocaleDateString("es-CO")}</td>
               <td style={{ whiteSpace: "nowrap" }}>
