@@ -121,7 +121,7 @@ export default function BuscarClient({ puedeDescargar, puedeEditar = false }: { 
                     return (
                       <button type="button" key={r.c} onClick={() => toggleClase(r.c)} className={`sug-item ${on ? "on" : ""}`}>
                         <span className="sug-check">{on ? "✓" : "+"}</span>
-                        <span><b>Clase {r.c}</b> — {r.titulo}<span className="sug-motivo">término: {r.termino}</span></span>
+                        <span><b>Clase {r.c}</b> — {r.titulo}<span className="sug-motivo">{r.parecido ? "parecido a" : "coincide con"}: {r.termino}</span></span>
                       </button>
                     );
                   })}

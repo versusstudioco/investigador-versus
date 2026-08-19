@@ -188,7 +188,7 @@ export const KEYWORDS_CLASE: { c: number; kw: string[] }[] = [
   { c: 40, kw: ["manufactura", "produccion", "fabricacion", "impresion", "maquila", "tratamiento de materiales", "reciclaje", "sublimacion", "bordado servicio", "confeccion a terceros", "purificacion"] },
   { c: 41, kw: ["educacion", "formacion", "capacitacion", "curso", "cursos", "taller", "entretenimiento", "academia", "colegio", "escuela", "universidad", "deportiva", "gimnasio servicio", "cultural", "evento", "eventos", "produccion audiovisual", "musica servicio", "editorial"] },
   { c: 42, kw: ["desarrollo de software", "diseño de software", "tecnologia", "programacion", "ingenieria", "cientifico", "diseño web", "diseño grafico", "saas", "hosting", "ciberseguridad", "arquitectura", "consultoria tecnologica", "inteligencia artificial", "app desarrollo"] },
-  { c: 43, kw: ["restaurante", "restaurantes", "comida", "comida rapida", "alimentacion", "bar", "cafeteria", "cafe servicio", "hotel", "hospedaje", "hosteleria", "catering", "gastronomia", "cocina servicio", "heladeria", "food truck", "panaderia servicio"] },
+  { c: 43, kw: ["restaurante", "restaurantes", "comida", "comida rapida", "hamburguesa", "pizza", "perro caliente", "arepa", "empanada", "sushi", "tacos", "asados", "parrilla", "alimentacion", "bar", "cafeteria", "cafe servicio", "hotel", "hospedaje", "hosteleria", "catering", "gastronomia", "cocina servicio", "heladeria", "food truck", "panaderia servicio"] },
   { c: 44, kw: ["medico servicio", "clinica", "consultorio", "salud servicio", "veterinario", "veterinaria", "estetica", "spa", "peluqueria", "barberia", "odontologia", "psicologia", "nutricion", "belleza servicio", "manicure", "tatuaje", "agricultura servicio", "jardineria"] },
   { c: 45, kw: ["juridico", "juridicos", "abogado", "legal", "asesoria legal", "seguridad", "vigilancia", "notaria", "servicios personales", "funeraria", "agencia matrimonial", "investigacion privada"] },
 ];
@@ -212,24 +212,56 @@ export function sugerirClasesDesc(descripcion: string): { c: number; titulo: str
   return out.slice(0, 8).map(({ c, titulo, motivo }) => ({ c, titulo, motivo }));
 }
 
+/* Normaliza y similitud (Levenshtein) locales para el filtro con cobertura total */
+function _norm(s: string): string {
+  return s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").trim();
+}
+function _sim(a: string, b: string): number {
+  if (!a || !b) return 0;
+  if (a === b) return 1;
+  const m = a.length, n = b.length;
+  const d: number[][] = Array.from({ length: m + 1 }, (_, i) => [i, ...Array(n).fill(0)]);
+  for (let j = 0; j <= n; j++) d[0][j] = j;
+  for (let i = 1; i <= m; i++)
+    for (let j = 1; j <= n; j++) {
+      const c = a[i - 1] === b[j - 1] ? 0 : 1;
+      d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + c);
+    }
+  return 1 - d[m][n] / Math.max(m, n);
+}
+
 /* Filtro por producto/servicio específico → clase (sub-clases).
-   Busca en el diccionario de términos y en los títulos de las clases. */
-export function buscarClasesPorTermino(q: string): { c: number; titulo: string; termino: string }[] {
-  const nq = q.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").trim();
+   SIEMPRE devuelve resultados: coincidencia exacta o, si no hay, las clases MÁS PARECIDAS. */
+export function buscarClasesPorTermino(q: string): { c: number; titulo: string; termino: string; parecido?: boolean }[] {
+  const nq = _norm(q);
   if (nq.length < 2) return [];
-  const res: { c: number; titulo: string; termino: string }[] = [];
-  const seen = new Set<number>();
-  // 1) términos específicos del diccionario
-  for (const { c, kw } of KEYWORDS_CLASE) {
-    const hit = kw.find((k) => k.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").includes(nq));
-    if (hit && !seen.has(c)) { res.push({ c, titulo: claseTitulo(c), termino: hit }); seen.add(c); }
-  }
-  // 2) coincidencia en el título de la clase
+  type Row = { c: number; titulo: string; termino: string; score: number; exacta: boolean };
+  const rows: Row[] = [];
+
   for (const n of NICE_CLASSES) {
-    const t = n.t.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
-    if (t.includes(nq) && !seen.has(n.c)) { res.push({ c: n.c, titulo: n.t, termino: n.t }); seen.add(n.c); }
+    const terminos = [n.t, ...(KEYWORDS_CLASE.find((k) => k.c === n.c)?.kw ?? [])];
+    let best = 0, bestTerm = n.t, exacta = false;
+    for (const t of terminos) {
+      const nt = _norm(t);
+      let s: number;
+      if (nt.includes(nq) || nq.includes(nt)) { s = 0.97; }
+      else {
+        s = _sim(nq, nt);
+        for (const w of nt.split(/\s+/)) {
+          const sw = w.includes(nq) || nq.includes(w) ? 0.92 : _sim(nq, w);
+          if (sw > s) s = sw;
+        }
+      }
+      if (s > best) { best = s; bestTerm = t; exacta = s >= 0.92; }
+    }
+    rows.push({ c: n.c, titulo: n.t, termino: bestTerm, score: best, exacta });
   }
-  return res.slice(0, 10);
+
+  rows.sort((a, b) => b.score - a.score);
+  const exactas = rows.filter((r) => r.exacta);
+  const base = exactas.length ? exactas : rows.filter((r) => r.score >= 0.45);
+  const lista = (base.length ? base : rows).slice(0, 8);
+  return lista.map((r) => ({ c: r.c, titulo: r.titulo, termino: r.termino, parecido: !r.exacta }));
 }
 
 export const PALABRAS_DEBILES = [
