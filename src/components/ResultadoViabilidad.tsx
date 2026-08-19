@@ -12,6 +12,31 @@ function badgeEstado(e: string) {
 
 const cop = (n: number) => new Intl.NumberFormat("es-CO", { style: "currency", currency: "COP", maximumFractionDigits: 0 }).format(n);
 
+/* Parser tolerante: convierte texto copiado de SIPI/OMPI en antecedentes editables */
+const ESTADOS_KW = ["registrada", "registrado", "vigente", "concedida", "concedido", "en trámite", "en tramite", "solicitada", "solicitado", "negada", "negado", "abandonada", "caducada", "publicada", "pendiente"];
+type ParsedAnt = { marca: string; clase: string; estado: string; expediente: string; titular: string };
+function parsearAntecedentes(texto: string): ParsedAnt[] {
+  const out: ParsedAnt[] = [];
+  const lineas = texto.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+  for (const l of lineas) {
+    const exp = (l.match(/\b([A-Z]{2}\d{4}[/-]?\d{3,}|\d{7,})\b/) || [])[0] || "";
+    const claseM = l.match(/clase[s]?\s*[:]?\s*(\d{1,2})/i);
+    const clase = claseM ? claseM[1] : "";
+    const low = l.toLowerCase();
+    const estadoKw = ESTADOS_KW.find((e) => low.includes(e)) || "";
+    // Debe tener al menos expediente, clase o estado para considerarse un registro
+    if (!exp && !clase && !estadoKw) continue;
+    let marca = l;
+    if (exp) marca = marca.replace(exp, "");
+    if (claseM) marca = marca.replace(claseM[0], "");
+    if (estadoKw) marca = marca.replace(new RegExp(estadoKw, "i"), "");
+    marca = marca.replace(/\t/g, " ").replace(/[|]/g, " ").replace(/\s{2,}/g, " ").trim();
+    const estado = estadoKw ? estadoKw.charAt(0).toUpperCase() + estadoKw.slice(1) : "Registrada";
+    out.push({ marca: marca.slice(0, 70) || "(revisar)", clase, estado, expediente: exp, titular: "" });
+  }
+  return out;
+}
+
 export default function ResultadoViabilidad({ caso, puedeDescargar, puedeEditar = false }: { caso: CasoRow; puedeDescargar: boolean; puedeEditar?: boolean }) {
   const a = caso.analisis;
   const [gen, setGen] = useState(false);
@@ -25,6 +50,32 @@ export default function ResultadoViabilidad({ caso, puedeDescargar, puedeEditar 
   const [requerimientos, setRequerimientos] = useState<Requerimiento[]>(caso.requerimientos || []);
   const [req, setReq] = useState({ tipo: "Requerimiento de forma", expediente: "", fechaNotificacion: "", fechaLimite: "", descripcion: "", estado: "Pendiente" });
   const [guardandoReq, setGuardandoReq] = useState(false);
+
+  // Captura por pegado (resultados copiados de SIPI/OMPI)
+  const [pegado, setPegado] = useState("");
+  const [parsed, setParsed] = useState<ParsedAnt[]>([]);
+  function procesarPegado() {
+    const rows = parsearAntecedentes(pegado);
+    if (rows.length === 0) { alert("No se detectaron registros. Verifica que pegaste la tabla de resultados (marca, expediente, clase, estado)."); return; }
+    setParsed(rows);
+  }
+  function editParsed(i: number, field: keyof ParsedAnt, val: string) {
+    setParsed((p) => p.map((r, idx) => (idx === i ? { ...r, [field]: val } : r)));
+  }
+  function quitarParsed(i: number) { setParsed((p) => p.filter((_, idx) => idx !== i)); }
+  async function agregarParsed() {
+    if (parsed.length === 0) return;
+    const nuevos: AntecedenteSIPI[] = parsed.map((r) => ({
+      marca: r.marca.trim() || "(revisar)", clase: Number(r.clase) || 0, estado: r.estado || "Registrada",
+      expediente: r.expediente.trim(), titular: r.titular.trim(), registradoPor: caso.autor || "—", fecha: new Date().toISOString(),
+    }));
+    const lista = [...antecedentes, ...nuevos];
+    setGuardando(true);
+    const res = await fetch(`/api/casos/${caso.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ antecedentesSIPI: lista }) });
+    setGuardando(false);
+    if (res.ok) { setAntecedentes(lista); setParsed([]); setPegado(""); }
+    else alert("No se pudo guardar.");
+  }
 
   const casoConAnt = { ...caso, antecedentesSIPI: antecedentes, requerimientos };
 
@@ -227,6 +278,32 @@ export default function ResultadoViabilidad({ caso, puedeDescargar, puedeEditar 
             <button className="btn btn-primary" onClick={agregarAntecedente} disabled={guardando}>
               {guardando ? "Guardando…" : "＋ Agregar antecedente verificado"}
             </button>
+
+            {/* Captura rápida por pegado */}
+            <div style={{ marginTop: 18, borderTop: "1px dashed var(--gris-borde)", paddingTop: 16 }}>
+              <label style={{ display: "block", fontSize: 13, fontWeight: 700, marginBottom: 6 }}>⚡ O pega aquí los resultados copiados de SIPI/OMPI</label>
+              <p className="muted" style={{ marginTop: 0, marginBottom: 8 }}>Selecciona la tabla de resultados en SIPI u OMPI, cópiala (Ctrl/Cmd+C) y pégala aquí. La app la convierte en antecedentes que puedes revisar antes de guardar.</p>
+              <textarea rows={4} value={pegado} onChange={(e) => setPegado(e.target.value)} placeholder="Pega aquí los resultados copiados…" style={{ width: "100%", padding: "10px 12px", border: "1px solid var(--gris-borde)", borderRadius: 10 }} />
+              <button type="button" className="btn btn-outline btn-sm" style={{ marginTop: 8 }} onClick={procesarPegado}>Procesar pegado</button>
+
+              {parsed.length > 0 && (
+                <div style={{ marginTop: 12 }}>
+                  <div className="muted" style={{ marginBottom: 6 }}>Revisa y corrige antes de agregar — {parsed.length} detectado(s):</div>
+                  {parsed.map((r, i) => (
+                    <div key={i} className="row" style={{ marginTop: 6, gap: 6, flexWrap: "nowrap" }}>
+                      <input value={r.marca} onChange={(e) => editParsed(i, "marca", e.target.value)} placeholder="Marca" style={{ flex: 2, padding: "8px 10px", border: "1px solid var(--gris-borde)", borderRadius: 8 }} />
+                      <input value={r.clase} onChange={(e) => editParsed(i, "clase", e.target.value)} placeholder="Clase" style={{ width: 64, padding: "8px 10px", border: "1px solid var(--gris-borde)", borderRadius: 8 }} />
+                      <input value={r.estado} onChange={(e) => editParsed(i, "estado", e.target.value)} placeholder="Estado" style={{ flex: 1, padding: "8px 10px", border: "1px solid var(--gris-borde)", borderRadius: 8 }} />
+                      <input value={r.expediente} onChange={(e) => editParsed(i, "expediente", e.target.value)} placeholder="Expediente" style={{ flex: 1, padding: "8px 10px", border: "1px solid var(--gris-borde)", borderRadius: 8 }} />
+                      <button type="button" className="btn btn-danger btn-sm" onClick={() => quitarParsed(i)}>✕</button>
+                    </div>
+                  ))}
+                  <button type="button" className="btn btn-primary btn-sm" style={{ marginTop: 10 }} onClick={agregarParsed} disabled={guardando}>
+                    {guardando ? "Guardando…" : `Agregar ${parsed.length} al informe`}
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         )}
         <div className="note note-warn">
